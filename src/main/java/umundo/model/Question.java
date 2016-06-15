@@ -4,6 +4,8 @@ import org.umundo.core.Message;
 
 public class Question {
 
+  private final String type = "question";
+
   private int questionId;
   private String question;
   private String answerA;

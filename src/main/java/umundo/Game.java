@@ -1,8 +1,7 @@
 package umundo;
 
-
 import org.apache.log4j.Logger;
-import org.umundo.control.Client;
+import umundo.control.Client;
 
 public class Game {
 

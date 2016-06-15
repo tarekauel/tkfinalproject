@@ -1,15 +1,15 @@
 package umundo.control;
 
 import org.apache.log4j.Logger;
-import org.umundo.QuestionFactory;
-import org.umundo.SimpleWebServer;
-import org.umundo.WSServer;
+import umundo.QuestionFactory;
+import umundo.SimpleWebServer;
+import umundo.WSServer;
 import org.umundo.core.Discovery;
 import org.umundo.core.Discovery.DiscoveryType;
 import org.umundo.core.Message;
 import org.umundo.core.Node;
 import org.umundo.core.SubscriberStub;
-import org.umundo.model.*;
+import umundo.model.*;
 import org.umundo.s11n.ITypedGreeter;
 import org.umundo.s11n.ITypedReceiver;
 import org.umundo.s11n.TypedPublisher;
@@ -65,8 +65,7 @@ public class Client {
 
     // channel for sending and receiving questions
     String QUESTION_CHANNEL = "GAME_CHANNEL";
-    subscriber = new TypedSubscriber(QUESTION_CHANNEL);
-    subscriber.setReceiver(new Receiver(this));
+    subscriber = new TypedSubscriber(QUESTION_CHANNEL, new Receiver(this));
     publisher = new TypedPublisher(QUESTION_CHANNEL);
     publisher.setGreeter(new Greeter());
     gameNode.addPublisher(publisher);

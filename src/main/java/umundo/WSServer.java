@@ -7,10 +7,10 @@ import org.apache.log4j.Logger;
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
-import org.umundo.control.Client;
-import org.umundo.model.Answer;
-import org.umundo.model.Question;
-import org.umundo.model.Scoreboard;
+import umundo.control.Client;
+import umundo.model.Answer;
+import umundo.model.Question;
+import umundo.model.Scoreboard;
 
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
@@ -47,7 +47,7 @@ public class WSServer extends WebSocketServer {
 
   public void sendIsLeader(boolean isLeader) {
     if (webSocket != null) {
-      webSocket.send("{\"leader\": " +  isLeader + "}");
+      webSocket.send("{\"type\": \"leader\", \"leader\": " +  isLeader + "}");
     }
   }
 

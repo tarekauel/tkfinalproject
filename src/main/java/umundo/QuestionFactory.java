@@ -1,6 +1,6 @@
 package umundo;
 
-import org.umundo.model.Question;
+import umundo.model.Question;
 
 import java.util.Random;
 

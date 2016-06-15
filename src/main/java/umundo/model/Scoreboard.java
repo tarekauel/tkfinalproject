@@ -7,6 +7,8 @@ import java.util.Map;
 
 public class Scoreboard {
 
+  private final String type = "score";
+
   private HashMap<String, Integer> scores;
 
   public Scoreboard(HashMap<String, Integer> scores) {
