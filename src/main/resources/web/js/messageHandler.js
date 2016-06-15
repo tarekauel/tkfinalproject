@@ -7,8 +7,8 @@ var messageHandler = (function() {
         // forward message to backend and append location information
         locationHandler.getPosition(function(long, lat) {
             message._pos = {
-                long: long,
-                lat: lat
+                longitude: long,
+                latitude: lat
             };
             connection.send(JSON.stringify(message));
         });

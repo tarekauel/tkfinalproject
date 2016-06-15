@@ -8,9 +8,7 @@ import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
 import umundo.control.Client;
-import umundo.model.Answer;
-import umundo.model.Question;
-import umundo.model.Scoreboard;
+import umundo.model.*;
 
 import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
@@ -20,41 +18,30 @@ public class WSServer extends WebSocketServer {
   private static Logger log = Logger.getLogger(WSServer.class.getName());
 
   private Client client;
-  private Gson gson = new Gson();
-
   private WebSocket webSocket;
+  private static final Gson gson = new Gson();
+  private boolean loggedIn = false;
 
   public WSServer(Client client, int port) throws UnknownHostException {
     super(new InetSocketAddress(port));
     this.client = client;
-    System.out.printf("Server created on port %d\n", port);
+    log.info(String.format("Server created on port %d\n", port));
   }
 
-  public void sendQuestion(Question q) {
-    // check whether someone connected already, else just ignore the question
-    if (webSocket != null) {
-      webSocket.send(gson.toJson(q));
-      log.info("send question");
+  public void sendMessage(OutMessage m) {
+    if (webSocket != null && loggedIn) {
+      webSocket.send(gson.toJson(m));
+      log.info(String.format("Message was sent: %s", gson.toJson(m)));
     }
   }
 
-  public void sendScoreboard(Scoreboard sb) {
-    // check is a client is already active
-    if (webSocket != null) {
-      webSocket.send(gson.toJson(sb));
-    }
-  }
-
-  public void sendIsLeader(boolean isLeader) {
-    if (webSocket != null) {
-      webSocket.send("{\"type\": \"leader\", \"leader\": " +  isLeader + "}");
-    }
+  public void setLoggedIn(boolean loggedIn) {
+    this.loggedIn = loggedIn;
   }
 
   @Override
   public void onOpen(WebSocket webSocket, ClientHandshake clientHandshake) {
     log.info("Someone connected");
-    webSocket.send("{\"username\": \"" + client.getUsername() + "\" }");
     this.webSocket = webSocket;
     client.pullScoreboard();
   }
@@ -71,10 +58,17 @@ public class WSServer extends WebSocketServer {
   public void onMessage(WebSocket webSocket, String s) {
     log.info("received message from ui: " + s);
     JsonObject jo = new JsonParser().parse(s).getAsJsonObject();
-    if(jo.has("exit")) {
-      client.exit();
-    } else {
-      client.answerFromUser(gson.fromJson(s, Answer.class));
+
+    String type = jo.get("type").getAsString();
+    jo.remove("type");
+    if (type.equals("answer")) {
+      Answer a = gson.fromJson(jo, Answer.class);
+      client.setLatestPos(a.getPos());
+      client.answerFromUser(a);
+    } else if (type.equals("userinfo")) {
+      Userinfo info = gson.fromJson(jo, Userinfo.class);
+      client.setLatestPos(info.getPos());
+      client.setUser(info);
     }
   }
 

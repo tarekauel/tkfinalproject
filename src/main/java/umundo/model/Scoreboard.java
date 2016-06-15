@@ -5,7 +5,7 @@ import org.umundo.core.Message;
 import java.util.HashMap;
 import java.util.Map;
 
-public class Scoreboard {
+public class Scoreboard implements OutMessage {
 
   private final String type = "score";
 

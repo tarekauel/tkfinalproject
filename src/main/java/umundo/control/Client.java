@@ -14,10 +14,12 @@ import org.umundo.s11n.ITypedGreeter;
 import org.umundo.s11n.ITypedReceiver;
 import org.umundo.s11n.TypedPublisher;
 import org.umundo.s11n.TypedSubscriber;
+import umundo.model.Question;
 
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 
 public class Client {
 
@@ -42,6 +44,7 @@ public class Client {
   private ArrayList<Question> questionHistory = new ArrayList<>();
   // map of scores: (username, score)
   private HashMap<String, Integer> scoreboard = new HashMap<>();
+  private HashSet<String> receivedAnswer;
 
   private String username;
 
@@ -49,14 +52,13 @@ public class Client {
   private Discovery disc;
 
   private final Client self = this;
+  private Thread workerThread = Thread.currentThread();
 
-  public Client(int port, String username) {
-    log.info(String.format("Starting new client on port %d and %d, username: %s\n",
-        port, port + 1, username));
+  private umundo.model.InMessage.Pos latestPos = null;
 
-    this.scoreboard.put(username, 0);
-
-    this.username = username;
+  public Client(int port) {
+    log.info(String.format("Starting new client on port %d and %d\n",
+        port, port + 1));
     this.startUiServer(port);
 
     disc = new Discovery(DiscoveryType.MDNS);
@@ -99,6 +101,14 @@ public class Client {
     }).start();
   }
 
+  public umundo.model.InMessage.Pos getLatestPos() {
+    return latestPos;
+  }
+
+  public void setLatestPos(umundo.model.InMessage.Pos latestPos) {
+    this.latestPos = latestPos;
+  }
+
   private void heartbeatSender() {
     // the leader sends a heartbeat to indicate that he is up.
     // non-leader node check if they have received a heartbeat within the last
@@ -125,7 +135,7 @@ public class Client {
               }
             }
             // send update info to client
-            self.wsServer.sendIsLeader(leader);
+            self.wsServer.sendMessage(new LeaderInfo(leader));
           } catch (InterruptedException e) {
             e.printStackTrace();
           }
@@ -167,6 +177,10 @@ public class Client {
           self.electionGoesOn = false;
           log.info("election finished and am I the leader: " + self.leader);
           self.heartbeatSender();
+          if (currentQuestionId == 0) {
+            // trigger first question immediately
+            workerThread.interrupt();
+          }
         } catch (InterruptedException e) {
           e.printStackTrace();
         }
@@ -207,18 +221,18 @@ public class Client {
   public void run() {
     while(true) {
       try {
-        Thread.sleep(30000); // 30 seconds between two questions
         if (this.leader) {
           // if leader: send question
           // publish a new question if client is the leader
           Question q = QuestionFactory.getQuestion(++currentQuestionId);
           questionHistory.add(q);
           publisher.send(q.get());
+          receivedAnswer = new HashSet<>();
           receivedQuestion(q);
           log.info("leader sent message");
         }
         log.info("question thread running");
-
+        Thread.sleep(30000); // 30 seconds between two questions
       } catch (InterruptedException e) {
         e.printStackTrace();
       }
@@ -231,18 +245,24 @@ public class Client {
     System.exit(0);
   }
 
+  public void setUser(Userinfo user) {
+    this.username = user.getUsername();
+    this.scoreboard.put(username, 0);
+    wsServer.setLoggedIn(true);
+  }
+
   private void receivedQuestion(Question q) {
     // keep track of the question id in order to be able to take over as new leader without
     // confusing ids
     currentQuestionId = q.getQuestionId();
     questionHistory.add(q);
     log.info("Received question with id " + q.getQuestionId());
-    wsServer.sendQuestion(q);
+    wsServer.sendMessage(q);
   }
 
   public void pullScoreboard() {
     // ui pulls the latest scoreboard if someone connects to the server
-    wsServer.sendScoreboard(new Scoreboard(this.scoreboard));
+    wsServer.sendMessage(new Scoreboard(this.scoreboard));
   }
 
   public void answerFromUser(Answer answer) {
@@ -273,8 +293,9 @@ public class Client {
   private void receivedAnswer(Answer a) {
     if (this.leader) {
       log.info(String.format("Received answer by %s for %d\n", a.getUsername(), a.getQuestionId()));
-      if (a.getQuestionId() == currentQuestionId) {
-        // is latest question
+      if (a.getQuestionId() == currentQuestionId && !receivedAnswer.contains(a.getUsername())) {
+        // is latest question and user has not answered, yet
+        receivedAnswer.add(a.getUsername());
         Question q = questionHistory.get(questionHistory.size() - 1);
         if (a.getAnswer() == q.getCorrectAnswer()) {
           log.info(String.format("Answer by %s for %d was correct\n", a.getUsername(), a.getQuestionId()));
@@ -309,7 +330,7 @@ public class Client {
   private void receivedScoreboard(Scoreboard scoreboard) {
     this.scoreboard = scoreboard.getScores();
     log.info("Received latest scoreboard");
-    wsServer.sendScoreboard(scoreboard);
+    wsServer.sendMessage(scoreboard);
   }
 
   private void receivedWelcome(Welcome w) {

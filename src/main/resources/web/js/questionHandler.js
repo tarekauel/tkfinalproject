@@ -18,6 +18,10 @@ var questionHandler = (function() {
             });
         });
     };
+    
+    var setQuestionDiv = function(div) {
+        questionDiv = div;
+    };
 
     var newQuestion = function(question) {
         currentQuestion = question;
@@ -40,7 +44,7 @@ var questionHandler = (function() {
         }
         messageHandler.sendMessage({
             type: "answer",
-            username: "test",
+            username: username,
             questionId: currentQuestion.questionId,
             answer: answer
         });
@@ -67,6 +71,7 @@ var questionHandler = (function() {
     return {
         guessAnswer: guessAnswer,
         setCountdownDiv: setCountdownDiv,
-        setAnswerButtons: setAnswerButtons
+        setAnswerButtons: setAnswerButtons,
+        setQuestionDiv: setQuestionDiv
     }
 })();

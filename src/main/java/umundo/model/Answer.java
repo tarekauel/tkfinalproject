@@ -2,7 +2,7 @@ package umundo.model;
 
 import org.umundo.core.Message;
 
-public class Answer {
+public class Answer extends InMessage {
 
   private String username;
   private int answer;

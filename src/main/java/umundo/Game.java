@@ -16,6 +16,6 @@ public class Game {
       System.exit(1);
       return;
     }
-    new Client(port, args[1]).run();
+    new Client(port).run();
   }
 }

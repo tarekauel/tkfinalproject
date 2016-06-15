@@ -1,8 +1,6 @@
 package umundo.model;
 
-import org.umundo.core.Message;
-
-public class Question {
+public class Question implements OutMessage {
 
   private final String type = "question";
 
@@ -24,7 +22,7 @@ public class Question {
     this.correctAnswer = correctAnswer;
   }
 
-  public static Question fromMessage(Message m) {
+  public static Question fromMessage(org.umundo.core.Message m) {
     return new Question(
         Integer.parseInt(m.getMeta("id")),
         m.getMeta("question"),
@@ -36,8 +34,8 @@ public class Question {
     );
   };
 
-  public Message get() {
-    Message m = new Message();
+  public org.umundo.core.Message get() {
+    org.umundo.core.Message m = new org.umundo.core.Message();
     m.putMeta("type", "question");
     m.putMeta("id", questionId + "");
     m.putMeta("question", question);
@@ -48,6 +46,8 @@ public class Question {
     m.putMeta("correctAnswer", correctAnswer + "");
     return m;
   }
+
+
 
   public int getQuestionId() {
     return questionId;
