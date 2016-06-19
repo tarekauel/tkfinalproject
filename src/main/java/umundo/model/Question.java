@@ -11,8 +11,32 @@ public class Question implements OutMessage {
   private String answerC;
   private String answerD;
   private int correctAnswer;
+  private InMessage.Pos pos;
 
-  public Question(int questionId, String question, String answerA, String answerB, String answerC, String answerD, int correctAnswer) {
+  public static Question getWithId(Question q, int id) {
+    return new Question(
+      id,
+      q.getQuestion(),
+      q.getAnswerA(),
+      q.getAnswerB(),
+      q.getAnswerC(),
+      q.getAnswerD(),
+      q.getCorrectAnswer(),
+      q.getPos()
+    );
+  }
+
+  public Question(String question, String answerA, String answerB, String answerC, String answerD, int correctAnswer, InMessage.Pos pos) {
+    this.question = question;
+    this.answerA = answerA;
+    this.answerB = answerB;
+    this.answerC = answerC;
+    this.answerD = answerD;
+    this.correctAnswer = correctAnswer;
+    this.pos = pos;
+  }
+
+  private Question(int questionId, String question, String answerA, String answerB, String answerC, String answerD, int correctAnswer, InMessage.Pos pos) {
     this.questionId = questionId;
     this.question = question;
     this.answerA = answerA;
@@ -20,6 +44,7 @@ public class Question implements OutMessage {
     this.answerC = answerC;
     this.answerD = answerD;
     this.correctAnswer = correctAnswer;
+    this.pos = pos;
   }
 
   public static Question fromMessage(org.umundo.core.Message m) {
@@ -30,7 +55,8 @@ public class Question implements OutMessage {
         m.getMeta("answerB"),
         m.getMeta("answerC"),
         m.getMeta("answerD"),
-        Integer.parseInt(m.getMeta("correctAnswer"))
+        Integer.parseInt(m.getMeta("correctAnswer")),
+        InMessage.Pos.fromJson(m.getMeta("pos"))
     );
   };
 
@@ -44,6 +70,7 @@ public class Question implements OutMessage {
     m.putMeta("answerC", answerC);
     m.putMeta("answerD", answerD);
     m.putMeta("correctAnswer", correctAnswer + "");
+    m.putMeta("pos", pos.toJson());
     return m;
   }
 
@@ -75,5 +102,9 @@ public class Question implements OutMessage {
 
   public int getCorrectAnswer() {
     return correctAnswer;
+  }
+
+  public InMessage.Pos getPos() {
+    return pos;
   }
 }

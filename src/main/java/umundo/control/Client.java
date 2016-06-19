@@ -15,6 +15,7 @@ import org.umundo.s11n.ITypedReceiver;
 import org.umundo.s11n.TypedPublisher;
 import org.umundo.s11n.TypedSubscriber;
 import umundo.model.Question;
+import umundo.model.InMessage.Pos;
 
 import java.net.UnknownHostException;
 import java.util.ArrayList;
@@ -104,7 +105,7 @@ public class Client {
     }).start();
   }
 
-  public umundo.model.InMessage.Pos getLatestPos() {
+  public Pos getLatestPos() {
     return latestPos;
   }
 
@@ -227,7 +228,7 @@ public class Client {
         if (this.leader) {
           // if leader: send question
           // publish a new question if client is the leader
-          Question q = QuestionFactory.getQuestion(++currentQuestionId);
+          Question q = QuestionFactory.getQuestionLoc(++currentQuestionId, this.getLatestPos());
           questionHistory.add(q);
           publisher.send(q.get());
           receivedAnswer = new HashSet<>();
