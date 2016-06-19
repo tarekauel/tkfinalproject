@@ -60,7 +60,10 @@ public class Client {
     log.info(String.format("Starting new client on port %d and %d\n",
         port, port + 1));
     this.startUiServer(port);
+  }
 
+  private void startUmundo() {
+    log.info("Starting umundo");
     disc = new Discovery(DiscoveryType.MDNS);
     gameNode = new Node();
     disc.add(gameNode);
@@ -249,6 +252,7 @@ public class Client {
     this.username = user.getUsername();
     this.scoreboard.put(username, 0);
     wsServer.setLoggedIn(true);
+    this.startUmundo();
   }
 
   private void receivedQuestion(Question q) {
