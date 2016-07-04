@@ -228,7 +228,8 @@ public class Client {
         if (this.leader) {
           // if leader: send question
           // publish a new question if client is the leader
-          Question q = QuestionFactory.getQuestionLoc(++currentQuestionId, this.getLatestPos());
+          ++currentQuestionId;
+          Question q = QuestionFactory.getQuestionForLocation(this.getLatestPos());
           questionHistory.add(q);
           publisher.send(q.get());
           receivedAnswer = new HashSet<>();
@@ -259,7 +260,7 @@ public class Client {
   private void receivedQuestion(Question q) {
     // keep track of the question id in order to be able to take over as new leader without
     // confusing ids
-    currentQuestionId = q.getQuestionId();
+    currentQuestionId = 1;//q.getQuestionId();
     questionHistory.add(q);
     log.info("Received question with id " + q.getQuestionId());
     wsServer.sendMessage(q);
