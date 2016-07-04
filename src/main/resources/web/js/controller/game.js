@@ -61,7 +61,13 @@ function ($scope, $interval, AuthService, MessageService) {
     };
 
     MessageService.subscribe($scope, "score", function (type, message) {
-        $scope.scores = message.scores;
+        $scope.scores = [];
+
+        Object.keys(message.scores).forEach(function (key) {
+            $scope.scores.push({ username: key, score: message.scores[key] });
+        });
+
+        console.log($scope.scores);
     });
 
     MessageService.subscribe($scope, "question", function (type, message) {

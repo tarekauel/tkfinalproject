@@ -39,7 +39,7 @@
         </div>
     </div>
 
-    <div class="row" ng-if="!isScoresEmpty()">
+    <div class="row" style="margin-top: 3em" ng-if="!isScoresEmpty()">
         <div class="col-xs-6 col-xs-offset-3">
             <table class="table">
                 <thead>
@@ -50,9 +50,9 @@
                 </thead>
 
                 <tbody>
-                    <tr ng-repeat="(username, score) in scores">
-                        <td>{{ username }}</td>
-                        <td>{{ score }} </td>
+                    <tr ng-repeat="el in scores | orderBy:'-score'">
+                        <td>{{ el.username }}</td>
+                        <td>{{ el.score }} </td>
                     </tr>
                 </tbody>
             </table>

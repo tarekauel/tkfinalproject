@@ -83,6 +83,4 @@ var app = angular
                 templateUrl: "partials/questions.html"
             })
             .otherwise("/login");
-
-        console.log($locationProvider);
     }]);
