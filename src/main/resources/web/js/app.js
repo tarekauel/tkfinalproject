@@ -1,5 +1,5 @@
 var app = angular
-    .module("quizApp", ["ngRoute"])
+    .module("quizApp", ["ngRoute", "LocalStorageModule"])
     .factory("AuthService", [function () {
         var identity = {},
             login = function (username, rememberMe) {
@@ -32,8 +32,8 @@ var app = angular
             getPosition: getPosition
         }
     }])
-    .factory("MessageService", ['$rootScope', 'LocationService', function ($rootScope, LocationService) {
-        var connection = new WebSocket('ws://' + location.hostname + ':' + (parseInt(location.port) + 1)),
+    .factory("MessageService", ["$rootScope", "LocationService", function ($rootScope, LocationService) {
+        var connection = new WebSocket("ws://" + location.hostname + ":" + (parseInt(location.port) + 1)),
             sendMessage = function(message) {
                 // forward message to backend and append location information
                 LocationService.getPosition(function(long, lat) {
@@ -42,21 +42,21 @@ var app = angular
                 });
             },
             subscribe = function (scope, type, callback) {
-                var handler = $rootScope.$on('message-rcv-' + type, function () {
+                var handler = $rootScope.$on("message-rcv-" + type, function () {
                     callback.apply(scope, arguments);
                     scope.$apply();
                 });
-                scope.$on('$destroy', handler);
+                scope.$on("$destroy", handler);
             };
 
         connection.onmessage = function (message) {
             var json = JSON.parse(message.data);
-            console.log('Message: ', json);
+            console.log("Message: ", json);
 
             if (!json.type) {
                 console.error("Received invalid message, unknown type " + json.type)
             } else {
-                $rootScope.$emit('message-rcv-' + json.type, json);
+                $rootScope.$emit("message-rcv-" + json.type, json);
             }
         };
 
@@ -64,6 +64,58 @@ var app = angular
             sendMessage: sendMessage,
             subscribe: subscribe
         };
+    }])
+    .factory("QuestionService", ["$q", "$rootScope", "localStorageService", "MessageService",
+    function ($q, $rootScope, localStorageService, MessageService) {
+        var questions = {},
+            addOrUpdate = function (question) {
+                var q = _(question).pick("questionId", "question", "answerA", "answerB", "answerC", "answerD", "correctAnswer", "pos"),
+                    json = JSON.stringify(q);
+
+                if (localStorageService.get(q.questionId) !== json) {
+                    localStorageService.set(q.questionId, json);
+                    questions[q.questionId] = q;
+                }
+            },
+            populate = function (excludeKnownIds) {
+                excludeKnownIds = excludeKnownIds !== false;
+                message = { type: "question-db", exclude: [] };
+                if (excludeKnownIds) message.exclude = localStorageService.keys();
+                MessageService.sendMessage(message);
+            },
+            reset = function () {
+                localStorageService.clearAll();
+                questions = {};
+            },
+            sync = function () { };
+
+        // Load questions from local storage
+        _(localStorageService.keys()).each(function (questionId) {
+            questions[questionId] = JSON.parse(localStorageService.get(questionId));
+        });
+
+        // Subscribe to new questions and insert/update them into the local storage on demand
+        MessageService.subscribe($rootScope, "question", function (type, msg) {
+            addOrUpdate(msg);
+        });
+
+        // List of questions to be saved in local storage
+        MessageService.subscribe($rootScope, "question-list", function (type, msg) {
+            _(msg.questions).each(addOrUpdate);
+        });
+
+        // TODO: Add subscribe method to subscribe to changes (on arrival of new question(s))
+        return {
+            populate: populate,
+            load: function () { return _(questions).values(); },
+            count: function () { return Object.keys(questions).length; }
+        }
+    }])
+    .config(["localStorageServiceProvider", function (localStorageServiceProvider) {
+        localStorageServiceProvider
+            .setPrefix("quizDb")
+            .setStorageCookie(0, "/")
+            .setNotify(false, false)
     }])
     .config(["$locationProvider", "$routeProvider",
     function ($locationProvider, $routeProvider) {
@@ -83,4 +135,5 @@ var app = angular
                 templateUrl: "partials/questions.html"
             })
             .otherwise("/login");
-    }]);
+    }])
+    .run(["QuestionService", function (QuestionService) { /* Make sure Question Service is loaded at run-time */ }]);

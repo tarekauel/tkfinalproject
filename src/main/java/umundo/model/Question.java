@@ -4,6 +4,8 @@ import helper.Database;
 import org.apache.log4j.Logger;
 
 import java.sql.*;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -50,6 +52,56 @@ public class Question implements OutMessage, PersistedModel {
     Question q = new Question(questionId);
 
     return q.reload() ? q : null;
+  }
+
+  public static Question[] loadAll() {
+    return loadAllById(new String[0]);
+  }
+
+  public static Question[] loadAllById(String[] questionIds) {
+    return loadAllById(questionIds, false);
+  }
+
+  public static Question[] loadAllById(String[] questionIds, boolean notIn) {
+    Connection db = Database.getConnection();
+    List<Question> questions = new ArrayList<>();
+    StringBuilder selectQuery = new StringBuilder("SELECT * FROM `question`");
+    StringBuilder in = new StringBuilder();
+    int count = 0;
+
+    if (questionIds.length > 0) {
+      in.append(" WHERE `uuid` ");
+      in.append(notIn ? "NOT IN(" : "IN(");
+      for (int i = 0; i < questionIds.length - 1; ++i) in.append("?,");
+      in.append("?)");
+    }
+
+    selectQuery.append(in);
+
+    try(PreparedStatement s = db.prepareStatement(selectQuery.toString())) {
+      for (int i = 0; i < questionIds.length; ++i) s.setString(i + 1, questionIds[i]);
+      ResultSet rs = s.executeQuery();
+      while (rs.next()) {
+        double longitude = rs.getDouble("longitude");
+        double latitude = rs.getDouble("latitude");
+        Optional<InMessage.Pos> pos = rs.wasNull() ? Optional.empty() : Optional.of(new InMessage.Pos(longitude, latitude));
+
+        questions.add(new Question(
+                rs.getString("uuid"),
+                rs.getString("question"),
+                rs.getString("answerA"),
+                rs.getString("answerB"),
+                rs.getString("answerC"),
+                rs.getString("answerD"),
+                rs.getInt("correct"),
+                pos));
+      }
+      s.close();
+    } catch (SQLException e) {
+      log.error("SQL query failed: " + e.toString());
+    }
+
+    return questions.toArray(new Question[0]);
   }
 
   private static boolean exists(String questionId) {

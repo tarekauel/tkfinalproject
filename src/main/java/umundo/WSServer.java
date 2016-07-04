@@ -8,6 +8,7 @@ import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.WebSocketServer;
 import umundo.control.Client;
+import umundo.messages.out.QuestionList;
 import umundo.model.*;
 
 import java.net.InetSocketAddress;
@@ -59,16 +60,23 @@ public class WSServer extends WebSocketServer {
     log.info("received message from ui: " + s);
     JsonObject jo = new JsonParser().parse(s).getAsJsonObject();
 
-    String type = jo.get("type").getAsString();
-    jo.remove("type");
-    if (type.equals("answer")) {
-      Answer a = gson.fromJson(jo, Answer.class);
-      client.setLatestPos(a.getPos());
-      client.answerFromUser(a);
-    } else if (type.equals("userinfo")) {
-      Userinfo info = gson.fromJson(jo, Userinfo.class);
-      client.setLatestPos(info.getPos());
-      client.setUser(info);
+    try {
+      String type = jo.get("type").getAsString();
+      jo.remove("type");
+      if (type.equals("answer")) {
+        Answer a = gson.fromJson(jo, Answer.class);
+        client.setLatestPos(a.getPos());
+        client.answerFromUser(a);
+      } else if (type.equals("userinfo")) {
+        Userinfo info = gson.fromJson(jo, Userinfo.class);
+        client.setLatestPos(info.getPos());
+        client.setUser(info);
+      } else if (type.equals("question-db")) {
+        String[] exclude = gson.fromJson(jo.getAsJsonArray("exclude"), String[].class);
+        sendMessage(new QuestionList(Question.loadAllById(exclude, true)));
+      }
+    } catch (Exception e) {
+      log.error("Failed to deserialize JSON: " + e.toString());
     }
   }
 

@@ -1,0 +1,36 @@
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-xs-12">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>UUID</th>
+                        <th>Question</th>
+                        <th>Answer A</th>
+                        <th>Answer B</th>
+                        <th>Answer C</th>
+                        <th>Answer D</th>
+                        <th>Correct Answer</th>
+                        <th>Coordinates</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <tr ng-if="questions.length == 0">
+                        <td colspan="8">Loading...</td>
+                    </tr>
+                    <tr ng-repeat="question in questions">
+                        <td>{{ question.questionId }}</td>
+                        <td>{{ question.question }}</td>
+                        <td>{{ question.answerA }}</td>
+                        <td>{{ question.answerB }}</td>
+                        <td>{{ question.answerC }}</td>
+                        <td>{{ question.answerD }}</td>
+                        <td>{{ question.correctAnswer }}</td>
+                        <td>{{ question.pos.value.longitude }}, {{ question.pos.value.latitude }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
