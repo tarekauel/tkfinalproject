@@ -55,7 +55,6 @@ public class Question implements OutMessage, PersistedModel {
   private static boolean exists(String questionId) {
     Connection db = Database.getConnection();
 
-    // Update question, if it exists
     try (PreparedStatement s = db.prepareStatement("SELECT uuid FROM `question` WHERE `uuid` = ?")) {
       s.setString(1, questionId);
       ResultSet rs = s.executeQuery();
@@ -287,7 +286,7 @@ public class Question implements OutMessage, PersistedModel {
     }
 
     try (Statement s = db.createStatement()) {
-      s.executeUpdate("CREATE UNIQUE INDEX IF NOT EXISTS `questionUnqIdx` ON `question`(question)");
+      s.executeUpdate("CREATE INDEX IF NOT EXISTS `questionIdx` ON `question`(question)");
       s.close();
     } catch (SQLException e) {
       log.error("Failed to create question table: " + e.getMessage());

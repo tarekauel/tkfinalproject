@@ -8,7 +8,6 @@ public class Game {
   private static Logger log = Logger.getLogger(Game.class.getName());
 
   public static void main(String[] args) throws Exception {
-    Class.forName("umundo.QuestionFactory");
     int port;
     try {
       port = Integer.parseInt(args[0]);

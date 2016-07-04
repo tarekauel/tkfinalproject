@@ -41,7 +41,7 @@ public class Client {
   // websocket server to communicate with the web ui
   private WSServer wsServer;
 
-  private int currentQuestionId = 0;
+  private String currentQuestionId = "";
   private ArrayList<Question> questionHistory = new ArrayList<>();
   // map of scores: (username, score)
   private HashMap<String, Integer> scoreboard = new HashMap<>();
@@ -181,7 +181,7 @@ public class Client {
           self.electionGoesOn = false;
           log.info("election finished and am I the leader: " + self.leader);
           self.heartbeatSender();
-          if (currentQuestionId == 0) {
+          if (currentQuestionId.isEmpty()) {
             // trigger first question immediately
             workerThread.interrupt();
           }
@@ -228,8 +228,8 @@ public class Client {
         if (this.leader) {
           // if leader: send question
           // publish a new question if client is the leader
-          ++currentQuestionId;
           Question q = QuestionFactory.getQuestionForLocation(this.getLatestPos());
+          currentQuestionId = q.getQuestionId();
           questionHistory.add(q);
           publisher.send(q.get());
           receivedAnswer = new HashSet<>();
@@ -260,7 +260,7 @@ public class Client {
   private void receivedQuestion(Question q) {
     // keep track of the question id in order to be able to take over as new leader without
     // confusing ids
-    currentQuestionId = 1;//q.getQuestionId();
+    currentQuestionId = q.getQuestionId();
     questionHistory.add(q);
     log.info("Received question with id " + q.getQuestionId());
     wsServer.sendMessage(q);
@@ -298,13 +298,14 @@ public class Client {
 
   private void receivedAnswer(Answer a) {
     if (this.leader) {
-      log.info(String.format("Received answer by %s for %d\n", a.getUsername(), a.getQuestionId()));
-      if (a.getQuestionId() == currentQuestionId && !receivedAnswer.contains(a.getUsername())) {
+      log.info(String.format("Received answer by %s for %s", a.getUsername(), a.getQuestionId()));
+
+      if (a.getQuestionId().equals(currentQuestionId) && !receivedAnswer.contains(a.getUsername())) {
         // is latest question and user has not answered, yet
         receivedAnswer.add(a.getUsername());
         Question q = questionHistory.get(questionHistory.size() - 1);
         if (a.getAnswer() == q.getCorrectAnswer()) {
-          log.info(String.format("Answer by %s for %d was correct\n", a.getUsername(), a.getQuestionId()));
+          log.info(String.format("Answer by %s for %s was correct\n", a.getUsername(), a.getQuestionId()));
 
           //update scores
           int lastScore = scoreboard.getOrDefault(a.getUsername(), 0);
@@ -314,7 +315,7 @@ public class Client {
           publisher.send(sb.get());
           receivedScoreboard(sb);
         } else {
-          log.info(String.format("Answer by %s for %d was wrong\n", a.getUsername(), a.getQuestionId()));
+          log.info(String.format("Answer by %s for %s was wrong\n", a.getUsername(), a.getQuestionId()));
         }
       } else {
         // question is outdated

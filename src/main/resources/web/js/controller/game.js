@@ -32,32 +32,36 @@ function ($scope, $interval, AuthService, MessageService) {
     $scope.isLeader = false;
     $scope.remaining = 0;
     $scope.question = {
-        question: "Question is comming soon",
+        question: "Awaiting question...",
         answerA: "A",
         answerB: "B",
         answerC: "C",
         answerD: "D"
     };
+    $scope.scores = {};
+    $scope.isScoresEmpty = function () {
+        return Object.keys($scope.scores).length == 0;
+    };
     $scope.buttonClass = function (btnId) {
-        return selectedAnswer === null || !("correctAnswer" in $scope.question) ? "btn-default" :
-            selectedAnswer == $scope.question.correctAnswer && selectedAnswer == btnId  ? "btn-success" :
+        return selectedAnswer === null || selectedAnswer != btnId || !("correctAnswer" in $scope.question) ? "btn-default" :
+            selectedAnswer == $scope.question.correctAnswer  ? "btn-success" :
             "btn-danger";
     };
     $scope.guess = function (answer) {
-        startTimer();
-        selectedAnswer = answer;
+        if (selectedAnswer == null) {
+            selectedAnswer = answer;
 
-        // Send answer option to server
-        MessageService.sendMessage({
-            type: "answer",
-            username: AuthService.getUsername(),
-            questionId: $scope.question.questionId,
-            answer: answer
-        });
+            MessageService.sendMessage({
+                type: "answer",
+                username: AuthService.getUsername(),
+                questionId: $scope.question.questionId,
+                answer: answer
+            });
+        }
     };
 
     MessageService.subscribe($scope, "score", function (type, message) {
-        console.log("FROM GAMECTRL: ", type, message);
+        $scope.scores = message.scores;
     });
 
     MessageService.subscribe($scope, "question", function (type, message) {
@@ -67,6 +71,4 @@ function ($scope, $interval, AuthService, MessageService) {
     MessageService.subscribe($scope, "leader", function (type, message) {
         $scope.isLeader = message.leader;
     });
-
-    console.log("GAME");
 }]);

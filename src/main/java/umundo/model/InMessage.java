@@ -43,7 +43,7 @@ public abstract class InMessage {
          * Calculates the end-point from a given source at a given range (meters)
          * and bearing (degrees). This methods uses simple geometry equations to
          * calculate the end-point.
-         * http://stackoverflow.com/questions/3695224/sqlite-getting-nearest-locations-with-latitude-and-longitude
+         * http://www.movable-type.co.uk/scripts/latlong.html
          *
          * @param range
          *            Range in meters
@@ -53,26 +53,49 @@ public abstract class InMessage {
          */
         public Pos calculateDerivedPosition(double range, double bearing)
         {
-            double EarthRadius = 6371000; // m
-            double angularDistance = range / EarthRadius;
-            double latA = Math.toRadians(this.latitude);
-            double lonA = Math.toRadians(this.longitude);
-            double trueCourse = Math.toRadians(bearing);
+            double earthRadius = 6371E3; // m
+            double phi1 = Math.toRadians(this.latitude);
+            double lambda1 = Math.toRadians(this.longitude);
+            double theta = Math.toRadians(bearing);
+            double delta = range / earthRadius;
 
-            double lat = Math.asin(
-                    Math.sin(latA) * Math.cos(angularDistance) +
-                            Math.cos(latA) * Math.sin(angularDistance) * Math.cos(trueCourse));
+            double phi2 = Math.asin(
+                    Math.sin(phi1) * Math.cos(delta) +
+                    Math.cos(phi1) * Math.sin(delta) * Math.cos(theta));
+            double lamda2 = lambda1 + Math.atan2(Math.sin(theta) * Math.sin(delta) * Math.cos(phi1),
+                    Math.cos(delta) - Math.sin(phi1) * Math.sin(phi2));
 
-            double dlon = Math.atan2(
-                    Math.sin(trueCourse) * Math.sin(angularDistance) * Math.cos(latA),
-                    Math.cos(angularDistance) - Math.sin(latA) * Math.sin(lat));
+            return new Pos(Math.toDegrees(lamda2), Math.toDegrees(phi2));
+        }
 
-            double lon = ((lonA + dlon + Math.PI) % (Math.PI * 2)) - Math.PI;
+        public PosBoundary rangeBoundaries(double range) {
+            Pos north = calculateDerivedPosition(range, 90);
+            Pos east = calculateDerivedPosition(range, 0);
+            Pos south = calculateDerivedPosition(range, 270);
+            Pos west = calculateDerivedPosition(range, 180);
 
-            lat = Math.toDegrees(lat);
-            lon = Math.toDegrees(lon);
+            return new PosBoundary(
+                    new Pos(north.getLongitude(), west.getLatitude()),
+                    new Pos(south.getLongitude(), east.getLatitude())
+            );
+        }
+    }
 
-            return new Pos(lon, lat);
+    public static class PosBoundary {
+        private Pos northWest;
+        private Pos southEast;
+
+        public PosBoundary(Pos northWest, Pos southEast) {
+            this.northWest = northWest;
+            this.southEast = southEast;
+        }
+
+        public Pos getNorthWest() {
+            return northWest;
+        }
+
+        public Pos getSouthEast() {
+            return southEast;
         }
     }
 }
