@@ -16,28 +16,15 @@ public class QuestionFactory {
   public static final Pos mannheim  = new Pos(49.486468, 8.469552);
   public static final Pos darmstadt = new Pos(49.877658, 8.655008);
   public static final Pos frankfurt = new Pos(50.048403, 8.573321);
-  public static final Pos seeheim = new Pos(49.771065426760664, 8.644266128540039);
 
   private static Logger log = Logger.getLogger(QuestionFactory.class.getName());
 
 
   static {
-    Question q;
-    for(int i=0; i < 10; i++) {
-      q = new Question("Mannheim" + i, "A", "B", "C", "D", 0, Optional.of(mannheim));
-      q.save();
-    }
-    for(int i=0; i < 10; i++) {
-      q = new Question("Darmstadt" + i, "A", "B", "C", "D", 0, Optional.of(darmstadt));
-      q.save();
-    }
-    for(int i=0; i < 10; i++) {
-      q = new Question("Frankfurt" + i, "A", "B", "C", "D", 0, Optional.of(frankfurt));
-      q.save();
-    }
-
-    q = new Question("Wofür steht der Begriff Oheim?", "Obdachlosenheim", "Onkel", "Ohnmacht", "Oggersheim", 1);
-    q.save();
+    (new Question("Wieviele Einwohner hat Mannheim?", "~ 300.000", "~ 500.000", "~ 30.000", "~ 50.000", 0, Optional.of(mannheim))).save();
+    (new Question("Wieviele Einwohner hat Darmstadt?", "~ 15.500", "~ 255.000", "~ 25.500", "~ 155.000", 3, Optional.of(darmstadt))).save();
+    (new Question("Wieviele Einwohner hat Frankfurt", "~ 470.000", "~ 400.000", "~ 725.000", "~ 650.000", 2, Optional.of(frankfurt))).save();
+    (new Question("Wofür steht der Begriff Oheim?", "Obdachlosenheim", "Onkel", "Ohnmacht", "Oggersheim", 1)).save();
   }
 
   private static Random r = new Random();

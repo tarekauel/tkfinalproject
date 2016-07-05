@@ -68,26 +68,64 @@ var app = angular
     .factory("QuestionService", ["$q", "$rootScope", "localStorageService", "MessageService",
     function ($q, $rootScope, localStorageService, MessageService) {
         var questions = {},
-            addOrUpdate = function (question) {
-                var q = _(question).pick("questionId", "question", "answerA", "answerB", "answerC", "answerD", "correctAnswer", "pos"),
-                    json = JSON.stringify(q);
+            // Add or update a question inside the local db
+            addOrUpdateDb = function (question) {
+                var q = _(question).pick("questionId", "question", "answerA", "answerB", "answerC", "answerD", "correctAnswer", "pos");
 
+                if (_(q).has('pos') && _(q.pos).has('value')) {
+                    q.pos = q.pos.value;
+                }
+
+                var json = JSON.stringify(q);
                 if (localStorageService.get(q.questionId) !== json) {
                     localStorageService.set(q.questionId, json);
                     questions[q.questionId] = q;
+
+                    return true;
                 }
+
+                return false;
+            }
+            // Create/update a question on server side.
+            // On creation: question will not be added to the local db immediatley because it requires the UUID from the server.
+            addOrUpdate = function (question) {
+                if (_(question).has('pos') && !_.isEmpty(question.pos) && !_(question.pos).has('value')) {
+                    question.pos = { value: question.pos };
+                }
+
+                if (_(question).has('questionId') && question.questionId.length === 36) {
+                    addOrUpdateDb(question);
+                }
+
+                MessageService.sendMessage({
+                    type: "question-update",
+                    question: question
+                });
             },
-            populate = function (excludeKnownIds) {
+            // Get a question from the local db by its UUID
+            getById = function (questionId) {
+                return JSON.parse(localStorageService.get(questionId));
+            },
+            // Ask server for known questions. Optionally, known UUIDs can be send to the server to leave them out in the reply.
+            retrieve = function (excludeKnownIds) {
                 excludeKnownIds = excludeKnownIds !== false;
                 message = { type: "question-db", exclude: [] };
                 if (excludeKnownIds) message.exclude = localStorageService.keys();
                 MessageService.sendMessage(message);
             },
-            reset = function () {
+            // Reset the local database
+            /*reset = function () {
                 localStorageService.clearAll();
                 questions = {};
             },
-            sync = function () { };
+            sync = function () { },*/
+            subscribe = function (scope, callback) {
+                var handler = $rootScope.$on("question-service-update", function () {
+                    callback.apply(scope);
+                    scope.$apply();
+                });
+                scope.$on("$destroy", handler);
+            };
 
         // Load questions from local storage
         _(localStorageService.keys()).each(function (questionId) {
@@ -96,21 +134,60 @@ var app = angular
 
         // Subscribe to new questions and insert/update them into the local storage on demand
         MessageService.subscribe($rootScope, "question", function (type, msg) {
-            addOrUpdate(msg);
+            addOrUpdateDb(msg);
+            $rootScope.$emit("question-service-update");
         });
 
-        // List of questions to be saved in local storage
+        // Save list of questions (reply from server) in the local storage
         MessageService.subscribe($rootScope, "question-list", function (type, msg) {
-            _(msg.questions).each(addOrUpdate);
+            _(msg.questions).each(addOrUpdateDb);
+            $rootScope.$emit("question-service-update");
         });
+
+        retrieve();
 
         // TODO: Add subscribe method to subscribe to changes (on arrival of new question(s))
         return {
-            populate: populate,
-            load: function () { return _(questions).values(); },
-            count: function () { return Object.keys(questions).length; }
+            get: getById,
+            getQuestions: function () { return _(questions).values(); },
+            // count: function () { return Object.keys(questions).length; },
+            onUpdate: subscribe,
+            addOrUpdate: addOrUpdate,
         }
     }])
+    .directive('convertToNumber', function() {
+        return {
+            require: 'ngModel',
+            link: function(scope, element, attrs, ngModel) {
+                ngModel.$parsers.push(function(val) {
+                    return parseInt(val, 10);
+                });
+                ngModel.$formatters.push(function(val) {
+                    return '' + val;
+                });
+            }
+        }
+    })
+    .filter("coordinates", function () {
+        return function (input) {
+            input = input || {};
+
+            if (!_(input).has("latitude") || !_(input).has("longitude")) {
+                return '[None]';
+            }
+
+            return "Lat: " + input.latitude + ", Long: " + input.longitude;
+        }
+    })
+    .filter("numToChar", function () {
+        return function (input) {
+            if (input >= 0 && input < 26) {
+                return String.fromCharCode(input + 65);
+            }
+
+            return "?";
+        }
+    })
     .config(["localStorageServiceProvider", function (localStorageServiceProvider) {
         localStorageServiceProvider
             .setPrefix("quizDb")
@@ -133,6 +210,14 @@ var app = angular
             .when("/questions", {
                 controller: "QuestionCtrl",
                 templateUrl: "partials/questions.html"
+            })
+            .when("/questions/create", {
+                controller: "QuestionCreateCtrl",
+                templateUrl: "partials/question.edit.html"
+            })
+            .when("/questions/:questionId", {
+                controller: "QuestionEditCtrl",
+                templateUrl: "partials/question.edit.html"
             })
             .otherwise("/login");
     }])
