@@ -8,6 +8,7 @@ import org.apache.commons.io.IOUtils;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
+import java.util.ArrayList;
 
 public class SimpleWebServer {
 
@@ -28,7 +29,13 @@ public class SimpleWebServer {
       }
       ClassLoader classLoader = getClass().getClassLoader();
       String response = IOUtils.toString(classLoader.getResourceAsStream("web" + path));
+      if (path.endsWith(".css")) {
+        t.getResponseHeaders().put("Content-Type", new ArrayList<String>() {{ add("text/css"); }});
+      } else if (path.endsWith(".js")) {
+        t.getResponseHeaders().put("Content-Type", new ArrayList<String>() {{ add("application/javascript"); }});
+      }
       t.sendResponseHeaders(200, response.length());
+
       OutputStream os = t.getResponseBody();
       os.write(response.getBytes());
       os.close();
