@@ -24,6 +24,10 @@ public class Question implements OutMessage, PersistedModel {
   private Optional<InMessage.Pos> pos;
 
 
+  private Question() {
+    pos = Optional.empty();
+  }
+
   public Question(String question, String answerA, String answerB, String answerC, String answerD, int correctAnswer) {
     this(question, answerA, answerB, answerC, answerD, correctAnswer, Optional.empty());
   }

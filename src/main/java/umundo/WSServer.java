@@ -30,7 +30,11 @@ public class WSServer extends WebSocketServer {
   }
 
   public void sendMessage(OutMessage m) {
-    if (webSocket != null && loggedIn) {
+    sendMessage(m, true);
+  }
+
+  public void sendMessage(OutMessage m, boolean loginRequired) {
+    if (webSocket != null && (!loginRequired || loggedIn)) {
       webSocket.send(gson.toJson(m));
       log.info(String.format("Message was sent: %s", gson.toJson(m)));
     }
@@ -73,10 +77,19 @@ public class WSServer extends WebSocketServer {
         client.setUser(info);
       } else if (type.equals("question-db")) {
         String[] exclude = gson.fromJson(jo.getAsJsonArray("exclude"), String[].class);
-        sendMessage(new QuestionList(Question.loadAllById(exclude, true)));
+        sendMessage(new QuestionList(Question.loadAllById(exclude, true)), false);
+      } else if (type.equals("question-update")) {
+        Question q = gson.fromJson(jo.getAsJsonObject("question"), Question.class);
+        boolean isNewRecord = q.getQuestionId() == null;
+        q.save();
+
+        if (isNewRecord) {
+          sendMessage(new QuestionList(q), false);
+        }
       }
     } catch (Exception e) {
       log.error("Failed to deserialize JSON: " + e.toString());
+      e.printStackTrace();
     }
   }
 

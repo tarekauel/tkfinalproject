@@ -6,6 +6,7 @@ import com.sun.net.httpserver.HttpServer;
 import org.apache.commons.io.IOUtils;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
@@ -24,22 +25,25 @@ public class SimpleWebServer {
     @Override
     public void handle(HttpExchange t) throws IOException {
       String path = t.getRequestURI().toASCIIString();
+
       if (path.equals("/")) {
         path = "/index.html";
       }
+
       ClassLoader classLoader = getClass().getClassLoader();
-      String response = IOUtils.toString(classLoader.getResourceAsStream("web" + path));
+      byte[] response = IOUtils.toByteArray(classLoader.getResourceAsStream("web" + path));
+
       if (path.endsWith(".css")) {
         t.getResponseHeaders().put("Content-Type", new ArrayList<String>() {{ add("text/css"); }});
       } else if (path.endsWith(".js")) {
         t.getResponseHeaders().put("Content-Type", new ArrayList<String>() {{ add("application/javascript"); }});
       }
-      t.sendResponseHeaders(200, response.length());
+
+      t.sendResponseHeaders(200, response.length);
 
       OutputStream os = t.getResponseBody();
-      os.write(response.getBytes());
+      os.write(response);
       os.close();
     }
   }
-
 }

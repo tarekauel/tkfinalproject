@@ -10,4 +10,9 @@ public class QuestionList implements OutMessage {
     public QuestionList(Question[] questions) {
         this.questions = questions;
     }
+
+    public QuestionList(Question question) {
+        this.questions = new Question[1];
+        this.questions[0] = question;
+    }
 }
