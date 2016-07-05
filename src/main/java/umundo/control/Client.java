@@ -1,5 +1,6 @@
 package umundo.control;
 
+import helper.Database;
 import org.apache.log4j.Logger;
 import umundo.QuestionFactory;
 import umundo.SimpleWebServer;
@@ -21,6 +22,7 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.UUID;
 
 public class Client {
 
@@ -45,6 +47,8 @@ public class Client {
   private ArrayList<Question> questionHistory = new ArrayList<>();
   // map of scores: (username, score)
   private HashMap<String, Integer> scoreboard = new HashMap<>();
+  // map of uuid: (username, uuid)
+  private HashMap<String, String> uuidmap = new HashMap<>();
   private HashSet<String> receivedAnswer;
 
   private String username;
@@ -229,6 +233,7 @@ public class Client {
           // if leader: send question
           // publish a new question if client is the leader
           Question q = QuestionFactory.getQuestionForLocation(this.getLatestPos());
+          q.setMatchUUID(UUID.randomUUID().toString());
           currentQuestionId = q.getQuestionId();
           questionHistory.add(q);
           publisher.send(q.get());
@@ -253,6 +258,7 @@ public class Client {
   public void setUser(Userinfo user) {
     this.username = user.getUsername();
     this.scoreboard.put(username, 0);
+    this.uuidmap.put(username, Database.getMyUID());
     wsServer.setLoggedIn(true);
     this.startUmundo();
   }
@@ -268,7 +274,7 @@ public class Client {
 
   public void pullScoreboard() {
     // ui pulls the latest scoreboard if someone connects to the server
-    wsServer.sendMessage(new Scoreboard(this.scoreboard));
+    wsServer.sendMessage(new Scoreboard(this.scoreboard, this.uuidmap));
   }
 
   public void answerFromUser(Answer answer) {
@@ -283,7 +289,7 @@ public class Client {
   }
 
   private void sendWelcome() {
-    Welcome w = new Welcome(this.getUsername());
+    Welcome w = new Welcome(this.getUsername(), Database.getMyUID());
     this.receivedWelcome(w);
     publisher.send(w.get());
   }
@@ -305,15 +311,21 @@ public class Client {
         receivedAnswer.add(a.getUsername());
         Question q = questionHistory.get(questionHistory.size() - 1);
         if (a.getAnswer() == q.getCorrectAnswer()) {
-          log.info(String.format("Answer by %s for %s was correct\n", a.getUsername(), a.getQuestionId()));
+          if (!q.isAnsweredCorrectly()) {
+            log.info(String.format("Answer by %s for %s was correct\n", a.getUsername(), a.getQuestionId()));
+            // Remember that it was answered correctly
+            q.setAnsweredCorrectly();
 
-          //update scores
-          int lastScore = scoreboard.getOrDefault(a.getUsername(), 0);
-          scoreboard.put(a.getUsername(), lastScore + 1);
+            //update scores
+            int lastScore = scoreboard.getOrDefault(a.getUsername(), 0);
+            scoreboard.put(a.getUsername(), lastScore + 1);
 
-          Scoreboard sb = new Scoreboard(scoreboard);
-          publisher.send(sb.get());
-          receivedScoreboard(sb);
+            Scoreboard sb = new Scoreboard(scoreboard, uuidmap);
+            publisher.send(sb.get());
+            receivedScoreboard(sb);
+          } else {
+            log.info(String.format("Answer by %s for %s was correct, but question was already answered", a.getUsername(), a.getQuestionId()));
+          }
         } else {
           log.info(String.format("Answer by %s for %s was wrong\n", a.getUsername(), a.getQuestionId()));
         }
@@ -335,6 +347,22 @@ public class Client {
   }
 
   private void receivedScoreboard(Scoreboard scoreboard) {
+    HashMap<String, Integer> newScore = scoreboard.getScores();
+    HashMap<String, String> newUUIDs = scoreboard.getUUIDmap();
+    for (String user : newScore.keySet()) {
+      int oldscore = this.scoreboard.getOrDefault(user, -1);
+      // If no old score is known, ignore this user
+      if (oldscore == -1) continue;
+      // If score has increased, write to database as winner
+      if (oldscore < newScore.get(user)) {
+        Database.insertMatch(new Match(
+                questionHistory.get(questionHistory.size() - 1).getMatchUUID(),
+                new Player(user, newUUIDs.get(user))
+        ));
+        break;
+      }
+    }
+
     this.scoreboard = scoreboard.getScores();
     log.info("Received latest scoreboard");
     wsServer.sendMessage(scoreboard);
@@ -342,7 +370,8 @@ public class Client {
 
   private void receivedWelcome(Welcome w) {
     this.scoreboard.put(w.getUsername(), this.scoreboard.getOrDefault(w.getUsername(), 0));
-    this.receivedScoreboard(new Scoreboard(this.scoreboard));
+    this.uuidmap.put(w.getUsername(), w.getUUID());
+    this.receivedScoreboard(new Scoreboard(this.scoreboard, this.uuidmap));
   }
 
   private static class Receiver implements ITypedReceiver {

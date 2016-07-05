@@ -8,7 +8,7 @@ public class Match {
     private String matchUID;
     private Player winner;
 
-    private Match(String match, Player win) {
+    public Match(String match, Player win) {
         winner = win;
         matchUID = match;
     }

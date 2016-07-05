@@ -15,6 +15,7 @@ public class Question implements OutMessage, PersistedModel {
   private final String type = "question";
 
   private String questionId;
+  private String matchuuid;
   private String question;
   private String answerA;
   private String answerB;
@@ -22,6 +23,7 @@ public class Question implements OutMessage, PersistedModel {
   private String answerD;
   private int correctAnswer;
   private Optional<InMessage.Pos> pos;
+  private boolean isAnsweredCorrectly = false;
 
 
   private Question() {
@@ -268,6 +270,8 @@ public class Question implements OutMessage, PersistedModel {
     );
 
     q.save();
+
+    q.setMatchUUID(m.getMeta("matchuuid"));
     return q;
   };
 
@@ -281,6 +285,7 @@ public class Question implements OutMessage, PersistedModel {
     m.putMeta("answerC", answerC);
     m.putMeta("answerD", answerD);
     m.putMeta("correctAnswer", correctAnswer + "");
+    m.putMeta("matchuuid", matchuuid);
     if (pos.isPresent()) {
       m.putMeta("pos", pos.get().toJson());
     }
@@ -290,6 +295,14 @@ public class Question implements OutMessage, PersistedModel {
 
   public String getQuestionId() {
     return questionId;
+  }
+
+  public String getMatchUUID() {
+    return matchuuid;
+  }
+
+  public void setMatchUUID(String uid) {
+    matchuuid = uid;
   }
 
   public String getQuestion() {
@@ -315,6 +328,10 @@ public class Question implements OutMessage, PersistedModel {
   public int getCorrectAnswer() {
     return correctAnswer;
   }
+
+  public boolean isAnsweredCorrectly() {return isAnsweredCorrectly;}
+
+  public void setAnsweredCorrectly() {isAnsweredCorrectly = true;}
 
   public InMessage.Pos getPos() { return pos.isPresent() ? pos.get() : null; }
 

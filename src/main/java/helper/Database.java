@@ -5,6 +5,9 @@ import umundo.model.Match;
 import umundo.model.Player;
 
 import java.sql.*;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.TreeMap;
 import java.util.UUID;
 
 
@@ -57,7 +60,7 @@ public class Database {
             System.exit(1);
         }
         try (Statement s = db.createStatement()) {
-            s.executeUpdate("CREATE TABLE IF NOT EXISTS `players` (" +
+            s.executeUpdate("CREATE TABLE IF NOT EXISTS `player` (" +
                     "`uuid` CHAR(36) PRIMARY KEY NOT NULL," +
                     "`name` TEXT NOT NULL" +
                     ")");
@@ -68,7 +71,7 @@ public class Database {
             System.exit(1);
         }
         try (Statement s = db.createStatement()) {
-            s.executeUpdate("CREATE TABLE IF NOT EXISTS `matches` (" +
+            s.executeUpdate("CREATE TABLE IF NOT EXISTS `match` (" +
                     "`uuid` CHAR(36) PRIMARY KEY NOT NULL," +
                     "`winner_uuid` CHAR(36) NOT NULL" +
                     ")");
@@ -80,6 +83,7 @@ public class Database {
         }
 
         // Own UID
+        // TODO Also insert into player database with name, once set
         if (getMyUID() == null) {
             String uid = UUID.randomUUID().toString();
 
@@ -117,6 +121,7 @@ public class Database {
 
     public static void insertMatch(Match match) {
         assert isOpen();
+        log.info("Add to database: Match " + match.getMatchUID() + " with winner " + match.getWinner().getPlayerUid());
         try (PreparedStatement s = db.prepareStatement("INSERT INTO `match` " +
                 "(`uuid`, `winner_uuid`)" +
                 "VALUES(?, ?)"))
@@ -172,6 +177,54 @@ public class Database {
         }
         return rv;
     }
+
+    public static Set<String> getKnownMatchUUIDs() {
+        // Ensure connection is sane
+        assert isOpen();
+        // Prepare result set
+        Set<String> rv = new HashSet<>();
+        // Query for all UUIDs
+        try (PreparedStatement s = db.prepareStatement("SELECT uuid FROM `match`")) {
+            ResultSet rs = s.executeQuery();
+            // Add all to return value
+            while (rs.next()) {
+                rv.add(rs.getString(1));
+            }
+            // Close
+            rs.close();
+        } catch (SQLException e) {
+            log.error(e);
+        }
+        return rv;
+    }
+
+    public static Match getMatchByUUID(String uuid) {
+        // Database connection sane?
+        assert isOpen();
+        // Prepare return value
+        Match rv = null;
+        // TODO Refactor to join with players database?
+        try (PreparedStatement s = db.prepareStatement("SELECT uuid, winner_uuid FROM `match` WHERE uuid = ? LIMIT 1")) {
+            // Insert placeholders
+            s.setString(1, uuid);
+
+            // Query
+            ResultSet rs = s.executeQuery();
+
+            // Retrieve result
+            if (rs.next()) {
+                rv = new Match(rs.getString(1), getPlayerByUUID(rs.getString(2)));
+            }
+
+            // Close resultset
+            s.close();
+        } catch (SQLException e) {
+            log.error("Failed to execute SQL statement: " + e.getMessage());
+        }
+        return rv;
+    }
+
+
 
     private static boolean isOpen() {
         return db != null;
