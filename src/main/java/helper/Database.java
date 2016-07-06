@@ -103,6 +103,7 @@ public class Database {
 
     public static String getMyUID() {
         assert isOpen();
+        log.info("getMyUID: UID retrieved");
         String uid = null;
         try (PreparedStatement s = db.prepareStatement("SELECT uuid FROM `localPlayerInfo` LIMIT 1")) {
             ResultSet rs = s.executeQuery();
@@ -142,8 +143,11 @@ public class Database {
     public static void insertPlayerIfNotExists(Player player) {
         assert isOpen();
 
-        if (getPlayerByUUID(player.getPlayerUid()) != null) return;
-
+        if (getPlayerByUUID(player.getPlayerUid()) != null) {
+            log.info("Attempted to insert player " + player.getPlayerUid() + ", but UUID already known");
+            return;
+        }
+        log.info("Inserting player " + player.getPlayerName() + ", uuid = " + player.getPlayerUid());
         try (PreparedStatement s = db.prepareStatement("INSERT INTO `player` " +
                 "(`uuid`, `name`)" +
                 "VALUES(?, ?)"))
@@ -161,6 +165,7 @@ public class Database {
 
     public static Player getPlayerByUUID(String uuid) {
         assert isOpen();
+        log.info("Looking for player with uuid " + uuid);
         Player rv = null;
         try (PreparedStatement s = db.prepareStatement("SELECT uuid, name FROM `player` WHERE uuid = ? LIMIT 1")) {
             s.setString(1, uuid);
@@ -169,6 +174,7 @@ public class Database {
 
             if (rs.next()) {
                 rv = new Player(rs.getString(1), rs.getString(2));
+                log.info("Player found: " + rv.getPlayerName());
             }
 
             s.close();
@@ -181,6 +187,7 @@ public class Database {
     public static Set<String> getKnownMatchUUIDs() {
         // Ensure connection is sane
         assert isOpen();
+        log.info("Retrieving list of known Match UUIDs");
         // Prepare result set
         Set<String> rv = new HashSet<>();
         // Query for all UUIDs
@@ -201,6 +208,7 @@ public class Database {
     public static Match getMatchByUUID(String uuid) {
         // Database connection sane?
         assert isOpen();
+        log.info("Looking for match with UUID " + uuid);
         // Prepare return value
         Match rv = null;
         // TODO Refactor to join with players database?
