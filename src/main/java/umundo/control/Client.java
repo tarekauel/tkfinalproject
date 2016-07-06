@@ -307,18 +307,21 @@ public class Client {
       log.info(String.format("Received answer by %s for %s", a.getUsername(), a.getQuestionId()));
 
       if (a.getQuestionId().equals(currentQuestionId) && !receivedAnswer.contains(a.getUsername())) {
-        // is latest question and user has not answered, yet
+        // is latest question and user has not answered yet
         receivedAnswer.add(a.getUsername());
         Question q = questionHistory.get(questionHistory.size() - 1);
         if (a.getAnswer() == q.getCorrectAnswer()) {
           if (!q.isAnsweredCorrectly()) {
-            log.info(String.format("Answer by %s for %s was correct\n", a.getUsername(), a.getQuestionId()));
+            log.info(String.format("Answer by %s for %s was correct", a.getUsername(), a.getQuestionId()));
             // Remember that it was answered correctly
             q.setAnsweredCorrectly();
 
             //update scores
             int lastScore = scoreboard.getOrDefault(a.getUsername(), 0);
             scoreboard.put(a.getUsername(), lastScore + 1);
+
+            // Add to database
+            Database.insertMatch(new Match(q.getMatchUUID(), new Player(a.getUsername(), uuidmap.get(a.getUsername()))));
 
             Scoreboard sb = new Scoreboard(scoreboard, uuidmap);
             publisher.send(sb.get());
@@ -327,11 +330,11 @@ public class Client {
             log.info(String.format("Answer by %s for %s was correct, but question was already answered", a.getUsername(), a.getQuestionId()));
           }
         } else {
-          log.info(String.format("Answer by %s for %s was wrong\n", a.getUsername(), a.getQuestionId()));
+          log.info(String.format("Answer by %s for %s was wrong", a.getUsername(), a.getQuestionId()));
         }
       } else {
         // question is outdated
-        log.info(String.format("Answer by %s was too late\n", a.getUsername()));
+        log.info(String.format("Answer by %s was too late", a.getUsername()));
       }
     }
   }
