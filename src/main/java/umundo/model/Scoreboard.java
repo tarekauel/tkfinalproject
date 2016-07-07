@@ -7,7 +7,7 @@ import java.util.Map;
 
 public class Scoreboard implements OutMessage {
 
-  private static final String type = "score";
+  private final String type = "score";
 
   private HashMap<String, Integer> scores;
   private HashMap<String, String> uuidmap;
@@ -27,7 +27,7 @@ public class Scoreboard implements OutMessage {
 
   public Message get() {
     Message m = new Message();
-    m.putMeta("type", type);
+    m.putMeta("type", "score");
     for(Map.Entry<String, Integer> e : scores.entrySet()) {
       // Format: name => score,uuid
       m.putMeta(e.getKey(), e.getValue().toString() + "," + uuidmap.get(e.getKey()));
