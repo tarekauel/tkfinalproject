@@ -23,7 +23,7 @@ public class Question implements OutMessage, PersistedModel {
   private String answerD;
   private int correctAnswer;
   private Optional<InMessage.Pos> pos;
-  private boolean isAnsweredCorrectly = false;
+  private transient boolean isAnsweredCorrectly = false;
 
 
   private Question() {
