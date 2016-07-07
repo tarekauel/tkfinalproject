@@ -1,14 +1,10 @@
 package helper;
 
 import org.apache.log4j.Logger;
-import umundo.model.Match;
-import umundo.model.Player;
+import umundo.model.*;
 
 import java.sql.*;
-import java.util.HashSet;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.UUID;
+import java.util.*;
 
 
 public class Database {
@@ -183,6 +179,28 @@ public class Database {
             log.error("Failed to execute SQL statement: " + e.getMessage());
         }
         return rv;
+    }
+
+    public static GlobalScoreboard getGlobalScores() {
+        assert isOpen();
+        log.info("Retrieving global scoreboard");
+
+        List<Score> score = new LinkedList<>();
+        try (PreparedStatement s = db.prepareStatement("SELECT player.name, COUNT(match.uuid) FROM player INNER JOIN match ON match.winner_uuid LIKE player.uuid GROUP BY player.name;")) {
+            ResultSet rs = s.executeQuery();
+            while (rs.next()) {
+                score.add(new Score(rs.getString(1), rs.getInt(2)));
+            }
+            s.close();
+        } catch (SQLException e) {
+            log.error(e);
+        }
+        // Fuck java.
+        Score[] scorearray = new Score[score.size()];
+        for (int i = 0; i < score.size(); i++) {
+            scorearray[i] = score.get(i);
+        }
+        return new GlobalScoreboard(scorearray);
     }
 
     public static Set<String> getKnownMatchUUIDs() {

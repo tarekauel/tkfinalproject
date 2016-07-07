@@ -219,6 +219,10 @@ var app = angular
                 controller: "QuestionEditCtrl",
                 templateUrl: "partials/question.edit.html"
             })
+            .when('/scores', {
+                controller: "ScoresCtrl",
+                templateUrl: "partials/scores.html"
+            })
             .otherwise("/login");
     }])
     .run(["QuestionService", function (QuestionService) { /* Make sure Question Service is loaded at run-time */ }]);

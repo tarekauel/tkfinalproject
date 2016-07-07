@@ -3,6 +3,7 @@ package umundo;
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import helper.Database;
 import org.apache.log4j.Logger;
 import org.java_websocket.WebSocket;
 import org.java_websocket.handshake.ClientHandshake;
@@ -86,6 +87,9 @@ public class WSServer extends WebSocketServer {
         if (isNewRecord) {
           sendMessage(new QuestionList(q), false);
         }
+      } else if (type.equals("send-scoreboard")) {
+        sendMessage(Database.getGlobalScores(), false);
+        log.info("Sent global scoreboard");
       }
     } catch (Exception e) {
       log.error("Failed to deserialize JSON: " + e.toString());
