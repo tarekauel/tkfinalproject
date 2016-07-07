@@ -1,5 +1,6 @@
 package umundo;
 
+import helper.Database;
 import org.apache.log4j.Logger;
 import umundo.control.Client;
 
@@ -20,6 +21,7 @@ public class Game {
       System.exit(1);
       return;
     }
+    Database.getConnection();
     new Client(port).run();
   }
 }

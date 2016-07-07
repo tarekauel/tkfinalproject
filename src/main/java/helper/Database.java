@@ -99,6 +99,7 @@ public class Database {
                 log.error(e);
             }
         }
+        log.info("Database setup completed");
     }
 
     public static String getMyUID() {
