@@ -289,6 +289,7 @@ public class Client {
   }
 
   private void sendWelcome() {
+    log.info("Sending welcome message");
     Welcome w = new Welcome(this.getUsername(), Database.getMyUID());
     this.receivedWelcome(w);
     publisher.send(w.get());
@@ -404,12 +405,15 @@ public class Client {
   private class Greeter implements ITypedGreeter {
     @Override
     public void welcome(TypedPublisher typedPublisher, SubscriberStub subscriberStub) {
+      log.info("=> " + typedPublisher.toString());
+      log.info("=> " + subscriberStub.toString());
       self.sendWelcome();
     }
 
     @Override
     public void farewell(TypedPublisher typedPublisher, SubscriberStub subscriberStub) {
-      // ignored, because users may rejoin
+      log.info("<= " + typedPublisher.toString());
+      log.info("<= " + subscriberStub.toString());
     }
   }
 }

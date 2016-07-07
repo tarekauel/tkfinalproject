@@ -203,18 +203,39 @@ public class Database {
         return new GlobalScoreboard(scorearray);
     }
 
-    public static Set<String> getKnownMatchUUIDs() {
+    public static HashMap<String, String> getMatchDatabase() {
         // Ensure connection is sane
         assert isOpen();
-        log.info("Retrieving list of known Match UUIDs");
+        log.info("Retrieving Match Database");
         // Prepare result set
-        Set<String> rv = new HashSet<>();
+        HashMap<String, String> rv = new HashMap<>();
         // Query for all UUIDs
-        try (PreparedStatement s = db.prepareStatement("SELECT uuid FROM `match`")) {
+        try (PreparedStatement s = db.prepareStatement("SELECT * FROM `match`")) {
             ResultSet rs = s.executeQuery();
             // Add all to return value
             while (rs.next()) {
-                rv.add(rs.getString(1));
+                rv.put(rs.getString(1), rs.getString(2));
+            }
+            // Close
+            rs.close();
+        } catch (SQLException e) {
+            log.error(e);
+        }
+        return rv;
+    }
+
+    public static HashMap<String, String> getPlayerDatabase() {
+        // Ensure connection is sane
+        assert isOpen();
+        log.info("Retrieving Player Database");
+        // Prepare result set
+        HashMap<String, String> rv = new HashMap<>();
+        // Query for all UUIDs
+        try (PreparedStatement s = db.prepareStatement("SELECT * FROM `player`")) {
+            ResultSet rs = s.executeQuery();
+            // Add all to return value
+            while (rs.next()) {
+                rv.put(rs.getString(1), rs.getString(2));
             }
             // Close
             rs.close();

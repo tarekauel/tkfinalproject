@@ -3,6 +3,7 @@ package umundo;
 import helper.Database;
 import org.apache.log4j.Logger;
 import umundo.control.Client;
+import umundo.control.SyncManager;
 
 public class Game {
 
@@ -22,6 +23,7 @@ public class Game {
       return;
     }
     Database.getConnection();
+    SyncManager.getInstance();
     new Client(port).run();
   }
 }
