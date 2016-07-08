@@ -290,7 +290,7 @@ public class Client {
 
   private void sendWelcome() {
     log.info("Sending welcome message");
-    Welcome w = new Welcome(this.getUsername(), Database.getMyUID());
+    Welcome w = new Welcome(this.getUsername(), Database.getMyUID(), SyncManager.getInstance().getHashes());
     this.receivedWelcome(w);
     publisher.send(w.get());
   }
@@ -376,6 +376,8 @@ public class Client {
     this.scoreboard.put(w.getUsername(), this.scoreboard.getOrDefault(w.getUsername(), 0));
     this.uuidmap.put(w.getUsername(), w.getUUID());
     this.receivedScoreboard(new Scoreboard(this.scoreboard, this.uuidmap));
+
+    SyncManager.getInstance().handleSyncMessage(w);
   }
 
   private static class Receiver implements ITypedReceiver {

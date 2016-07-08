@@ -2,6 +2,7 @@ package umundo.control;
 
 import helper.Database;
 import org.apache.log4j.Logger;
+import org.umundo.core.Message;
 import umundo.model.Welcome;
 
 import java.security.MessageDigest;
@@ -17,14 +18,14 @@ public class SyncManager {
 
     private static Logger log = Logger.getLogger(Client.class.getName());
 
-
+    // SMASH THE STATE!
     private HashMap<String, STATE> clientstate;
 
-    private HashMap<String, String> matches;
-    private HashMap<String, String> players;
     // Make space for 17 hashes
     private byte[][] hashes = new byte[17][];
-    // SMASH THE STATE!
+    private HashMap<String, String> matches;
+    private HashMap<String, String> players;
+    private HashMap<String, List<String>> prefixMap;
 
     private static SyncManager instance;
 
@@ -38,11 +39,14 @@ public class SyncManager {
         return instance;
     }
 
-    public void handleSyncMessage(Welcome msg) {
+    public Message handleSyncMessage(Welcome msg) {
         String uuid = msg.getUUID();
         if (!clientstate.containsKey(uuid)) {
             clientstate.put(uuid, STATE.HASH_COMPARE);
+            return processHashes(uuid, msg.getHashes());
             // TODO Get and send hashes
+        } else {
+            return null;
         }
     }
 
@@ -65,14 +69,16 @@ public class SyncManager {
             md = MessageDigest.getInstance("MD5");
         } catch (NoSuchAlgorithmException e) {
             // Fuck this shit, what the hell kind of platform is this?
-            log.error("MD5 algorithm not available - the fuck?");
+            log.error("MD5 algorithm not available - wtf?");
             System.exit(1);
             return;
         }
+        prefixMap.put(currentPrefix, new ArrayList<>());
         // Iterate over all known match UUIDs
         for (String uuid : uuidset) {
             if (uuid.startsWith(currentPrefix)) {
                 prefix.append(uuid);
+                prefixMap.get(currentPrefix).add(uuid);
             } else {
                 // Finalize string
                 String toHash = prefix.toString();
@@ -87,11 +93,14 @@ public class SyncManager {
                 prefix = new StringBuilder(uuid);
                 // Check if current prefix is next or if prefix was skipped
                 String nextPrefix = uuid.substring(0,1);
+                // Create new List in prefixMap
+                prefixMap.put(nextPrefix, new ArrayList<>());
                 int nextIndex = Integer.parseInt(nextPrefix, 16);
                 // Fill up skipped prefixes with hash of empty string, if applicable
                 if (nextIndex - currentIndex > 1) {
                     for (int i = currentIndex+1; i < nextIndex; i++) {
                         hashes[i] = md.digest();
+                        prefixMap.put(Integer.toHexString(i), new ArrayList<>());
                         md.reset();
                     }
                 }
@@ -120,6 +129,34 @@ public class SyncManager {
         hashes[16] = md.digest();
 
         log.info("Computed all hashes");
+    }
+
+
+    private Message processHashes(String uuid, byte[][] hashes) {
+        if (Arrays.equals(hashes[16], this.hashes[16])) {
+            // Last hash = overall hash
+            // If it matches, we are in sync
+            clientstate.put(uuid, STATE.SYNCED);
+            log.info("We are in sync with peer " + uuid);
+        } else {
+            clientstate.put(uuid, STATE.RECONCILIATION);
+            log.info("We are NOT in sync with peer " + uuid + ", starting reconciliation process");
+            // find out which prefixes do not match
+            List<Integer> doesNotMatch = new ArrayList<>();
+            for (int i = 0; i < 16; i++) {
+                if (!Arrays.equals(hashes[i], this.hashes[i])) {
+                    doesNotMatch.add(i);
+                }
+            }
+            // TODO Create new message with mismatched prefixes and players
+            // TODO Send the message to the peer
+
+        }
+        return null;
+    }
+
+    public byte[][] getHashes() {
+        return hashes;
     }
 
 }
