@@ -14,17 +14,46 @@ public class ScoreSyncMessage {
     private Map<String, String> players; // contains playerUID -> playerName mapping for players contained in matches
     private byte[][] hashes; // optional, for piggybacking hashes of prefixed areas
 
+    private boolean inSync;
     private String senderUID;
 
+    /**
+     * Constructor for a message that indicates that both peers are in sync
+     */
+    public ScoreSyncMessage(String senderUID) {
+        this.matches = null;
+        this.players = null;
+        this.hashes = null;
+        this.inSync = true;
+        this.senderUID = senderUID;
+    }
+
+    /**
+     * Constructor for a message that contains matches
+     */
+    public ScoreSyncMessage(Map<String, String> matches, Map<String, String> players, String senderUID) {
+        this(matches, players, null, senderUID);
+    }
+
+    /**
+     * Constructor for a message that contains matches and piggybacked hashes
+     */
     public ScoreSyncMessage(Map<String, String> matches, Map<String, String> players, byte[][] hashes, String senderUID) {
         this.matches = matches;
         this.players = players;
         this.hashes = hashes;
         this.senderUID = senderUID;
+        this.inSync = false;
     }
 
     public Message get() {
         Message m = new Message();
+        m.putMeta("inSync", Boolean.toString(inSync));
+
+        if(inSync) {
+            return m;
+        }
+
         m.putMeta("type", "sync");
         m.putMeta("sender", senderUID);
 
@@ -70,6 +99,12 @@ public class ScoreSyncMessage {
 
     public static ScoreSyncMessage fromMessage(Message m) {
 
+        boolean inSync = Boolean.parseBoolean(m.getMeta("inSync"));
+
+        if(inSync) {
+            return new ScoreSyncMessage(m.getMeta("sender"));
+        }
+
         // parse matches
         Map<String, String> matches = new HashMap<String, String>();
         String[] matchStrings = m.getMeta("matches").split(";");
@@ -101,8 +136,23 @@ public class ScoreSyncMessage {
         }
 
         return new ScoreSyncMessage(matches, players, hashes, m.getMeta("sender"));
-
     }
+
+    public Map<String, String> getMatches() {
+        return matches;
+    }
+
+    public Map<String, String> getPlayers() {
+        return players;
+    }
+
+    public byte[][] getHashes() {
+        return hashes;
+    }
+
+    public boolean isInSync() {
+        return inSync;
+    }
+
+
 }
-
-
