@@ -3,6 +3,7 @@ package umundo.control;
 import helper.Database;
 import org.apache.log4j.Logger;
 import org.umundo.core.Message;
+import umundo.model.ScoreSyncMessage;
 import umundo.model.Welcome;
 
 import java.security.MessageDigest;
@@ -44,7 +45,6 @@ public class SyncManager {
         if (!clientstate.containsKey(uuid)) {
             clientstate.put(uuid, STATE.HASH_COMPARE);
             return processHashes(uuid, msg.getHashes());
-            // TODO Get and send hashes
         } else {
             return null;
         }
@@ -142,15 +142,22 @@ public class SyncManager {
             clientstate.put(uuid, STATE.RECONCILIATION);
             log.info("We are NOT in sync with peer " + uuid + ", starting reconciliation process");
             // find out which prefixes do not match
-            List<Integer> doesNotMatch = new ArrayList<>();
+            List<String> doesNotMatch = new ArrayList<>();
             for (int i = 0; i < 16; i++) {
                 if (!Arrays.equals(hashes[i], this.hashes[i])) {
-                    doesNotMatch.add(i);
+                    doesNotMatch.add(Integer.toHexString(i));
                 }
             }
-            // TODO Create new message with mismatched prefixes and players
-            // TODO Send the message to the peer
-
+            HashMap<String, String> matches = new HashMap<>();
+            HashMap<String, String> players = new HashMap<>();
+            for (String prefix : doesNotMatch) {
+                for (String matchuuid : prefixMap.get(prefix)) {
+                    String winner = this.matches.get(matchuuid);
+                    matches.put(matchuuid, winner);
+                    players.put(winner, this.players.get(winner));
+                }
+            }
+            return new ScoreSyncMessage(matches, players, getHashes(), Database.getMyUID()).get();
         }
         return null;
     }
