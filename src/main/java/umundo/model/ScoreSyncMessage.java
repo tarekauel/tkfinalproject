@@ -14,19 +14,19 @@ public class ScoreSyncMessage {
     private Map<String, String> players; // contains playerUID -> playerName mapping for players contained in matches
     private byte[][] hashes; // optional, for piggybacking hashes of prefixed areas
 
-    private String prefix;
+    private String senderUID;
 
-    public ScoreSyncMessage(String prefix, Map<String, String> matches, Map<String, String> players, byte[][] hashes) {
-        this.prefix = prefix;
+    public ScoreSyncMessage(Map<String, String> matches, Map<String, String> players, byte[][] hashes, String senderUID) {
         this.matches = matches;
         this.players = players;
         this.hashes = hashes;
+        this.senderUID = senderUID;
     }
 
     public Message get() {
         Message m = new Message();
         m.putMeta("type", "sync");
-        m.putMeta("prefix", prefix);
+        m.putMeta("sender", senderUID);
 
         // build matches string
         if (matches == null || matches.isEmpty()) {
@@ -53,7 +53,7 @@ public class ScoreSyncMessage {
         m.putMeta("players", sb.toString().substring(0, sb.length() - 2));
 
         // build hashes string
-        if(hashes == null) {
+        if (hashes == null) {
             return m;
         }
 
@@ -90,8 +90,8 @@ public class ScoreSyncMessage {
 
         // parse hashes
         String hashesString = m.getMeta("hashes");
-        if(hashesString == null) {
-            return new ScoreSyncMessage(m.getMeta("prefix"), matches, players, null);
+        if (hashesString == null) {
+            return new ScoreSyncMessage(matches, players, null, m.getMeta("sender"));
         }
 
         String[] hashesStringArray = m.getMeta("hashes").split(",");
@@ -100,7 +100,7 @@ public class ScoreSyncMessage {
             hashes[i] = DatatypeConverter.parseHexBinary(hashesStringArray[i]);
         }
 
-        return new ScoreSyncMessage(m.getMeta("prefix"), matches, players, hashes);
+        return new ScoreSyncMessage(matches, players, hashes, m.getMeta("sender"));
 
     }
 }
