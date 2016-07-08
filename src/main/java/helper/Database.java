@@ -11,6 +11,8 @@ public class Database {
     private static Logger log = Logger.getLogger(Database.class.getName());
     private static Connection db;
 
+    private static String myUID; // for caching
+
 
     public static Connection getConnection() {
         try {
@@ -81,10 +83,10 @@ public class Database {
         // Own UID
         // TODO Also insert into player database with name, once set
         if (getMyUID() == null) {
-            String uid = UUID.randomUUID().toString();
+            myUID = UUID.randomUUID().toString();
 
             try (PreparedStatement s = db.prepareStatement("INSERT INTO localPlayerInfo (uuid) VALUES (?);")) {
-                s.setString(1, uid);
+                s.setString(1, myUID);
 
                 int rv = s.executeUpdate();
                 s.close();
@@ -100,21 +102,25 @@ public class Database {
 
     public static String getMyUID() {
         assert isOpen();
-        log.info("getMyUID: UID retrieved");
-        String uid = null;
+
+        if(myUID != null) {
+            return myUID;
+        }
+
+        log.info("getMyUID: UID retrieved from database");
         try (PreparedStatement s = db.prepareStatement("SELECT uuid FROM `localPlayerInfo` LIMIT 1")) {
             ResultSet rs = s.executeQuery();
 
             // This should always be true, as we generated a UID in the beginning
             if (rs.next()) {
-                uid = rs.getString(1);
+                myUID = rs.getString(1);
             }
 
             s.close();
         } catch (SQLException e) {
             log.error("Failed to execute SQL statement: " + e.getMessage());
         }
-        return uid;
+        return myUID;
     }
 
     public static void insertMatch(Match match) {

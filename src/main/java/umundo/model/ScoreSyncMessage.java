@@ -1,6 +1,7 @@
 package umundo.model;
 
 
+import helper.Database;
 import javafx.beans.binding.StringBinding;
 import org.umundo.core.Message;
 
@@ -20,30 +21,41 @@ public class ScoreSyncMessage {
     /**
      * Constructor for a message that indicates that both peers are in sync
      */
-    public ScoreSyncMessage(String senderUID) {
+    public ScoreSyncMessage() {
         this.matches = null;
         this.players = null;
         this.hashes = null;
         this.inSync = true;
-        this.senderUID = senderUID;
+        this.senderUID = Database.getMyUID();
     }
 
     /**
      * Constructor for a message that contains matches
      */
-    public ScoreSyncMessage(Map<String, String> matches, Map<String, String> players, String senderUID) {
-        this(matches, players, null, senderUID);
+    public ScoreSyncMessage(Map<String, String> matches, Map<String, String> players) {
+        this(matches, players, null);
     }
 
     /**
      * Constructor for a message that contains matches and piggybacked hashes
      */
-    public ScoreSyncMessage(Map<String, String> matches, Map<String, String> players, byte[][] hashes, String senderUID) {
+    public ScoreSyncMessage(Map<String, String> matches, Map<String, String> players, byte[][] hashes) {
+        this.matches = matches;
+        this.players = players;
+        this.hashes = hashes;
+        this.senderUID = Database.getMyUID();
+        this.inSync = false;
+    }
+
+    /**
+     * Private constructor for instantiation of received messages
+     */
+    private ScoreSyncMessage(Map<String, String> matches, Map<String, String> players, byte[][] hashes, String senderUID, boolean inSync) {
         this.matches = matches;
         this.players = players;
         this.hashes = hashes;
         this.senderUID = senderUID;
-        this.inSync = false;
+        this.inSync = inSync;
     }
 
     public Message get() {
@@ -64,7 +76,9 @@ public class ScoreSyncMessage {
 
         StringBuilder sb = new StringBuilder();
         for (String match : matches.keySet()) {
-            sb.append(match + ',' + matches.get(match));
+            sb.append(match);
+            sb.append(',');
+            sb.append(matches.get(match));
             sb.append(';');
         }
         m.putMeta("matches", sb.toString().substring(0, sb.length() - 2));
@@ -76,7 +90,9 @@ public class ScoreSyncMessage {
 
         sb.setLength(0);
         for (String playerUID : players.keySet()) {
-            sb.append(playerUID + ',' + players.get(playerUID));
+            sb.append(playerUID);
+            sb.append(',');
+            sb.append(players.get(playerUID));
             sb.append(';');
         }
         m.putMeta("players", sb.toString().substring(0, sb.length() - 2));
@@ -102,7 +118,7 @@ public class ScoreSyncMessage {
         boolean inSync = Boolean.parseBoolean(m.getMeta("inSync"));
 
         if(inSync) {
-            return new ScoreSyncMessage(m.getMeta("sender"));
+            return new ScoreSyncMessage(null, null, null, m.getMeta("sender"), true);
         }
 
         // parse matches
@@ -126,7 +142,7 @@ public class ScoreSyncMessage {
         // parse hashes
         String hashesString = m.getMeta("hashes");
         if (hashesString == null) {
-            return new ScoreSyncMessage(matches, players, null, m.getMeta("sender"));
+            return new ScoreSyncMessage(matches, players, null, m.getMeta("sender"), false);
         }
 
         String[] hashesStringArray = m.getMeta("hashes").split(",");
@@ -135,7 +151,7 @@ public class ScoreSyncMessage {
             hashes[i] = DatatypeConverter.parseHexBinary(hashesStringArray[i]);
         }
 
-        return new ScoreSyncMessage(matches, players, hashes, m.getMeta("sender"));
+        return new ScoreSyncMessage(matches, players, hashes, m.getMeta("sender"), false);
     }
 
     public Map<String, String> getMatches() {
