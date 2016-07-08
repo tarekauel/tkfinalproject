@@ -96,8 +96,7 @@ public class ScoreSyncMessage {
 
         String[] hashesStringArray = m.getMeta("hashes").split(",");
         byte[][] hashes = new byte[17][];
-        if (hashesStringArray.length != 18) return null;
-        for (int i = 0; i < 17; i++) {
+        for (int i = 0; i < hashes.length; i++) {
             hashes[i] = DatatypeConverter.parseHexBinary(hashesStringArray[i]);
         }
 
