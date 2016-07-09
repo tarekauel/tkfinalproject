@@ -1,5 +1,6 @@
 package umundo.model;
 
+import org.apache.log4j.Logger;
 import org.umundo.core.Message;
 
 import javax.xml.bind.DatatypeConverter;
@@ -9,6 +10,9 @@ public class Welcome {
   private String username;
   private String uuid;
   private byte[][] hashes;
+
+  private static Logger log = Logger.getLogger(Welcome.class.getName());
+
 
   public Welcome(String username, String uuid, byte[][] hashes) {
     this.uuid = uuid;
@@ -47,7 +51,10 @@ public class Welcome {
   public static Welcome fromMessage(Message m) {
     String[] split = m.getMeta("hashes").split(",");
     byte[][] hashes = new byte[17][];
-    if (split.length != 18) return null;
+    if (split.length != 17) {
+      log.error("Heresy! the hashes did not split correctly! Got " + split.length + " splits");
+      return null;
+    }
     for (int i = 0; i < 17; i++) {
       hashes[i] = DatatypeConverter.parseHexBinary(split[i]);
     }

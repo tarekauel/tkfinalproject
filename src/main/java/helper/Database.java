@@ -126,7 +126,7 @@ public class Database {
     public static void insertMatch(Match match) {
         assert isOpen();
         log.info("Add to database: Match " + match.getMatchUID() + " with winner " + match.getWinner().getPlayerUid());
-        try (PreparedStatement s = db.prepareStatement("INSERT INTO `match` " +
+        try (PreparedStatement s = db.prepareStatement("INSERT OR IGNORE INTO `match` " +
                 "(`uuid`, `winner_uuid`)" +
                 "VALUES(?, ?)"))
         {
@@ -151,7 +151,7 @@ public class Database {
             return;
         }
         log.info("Inserting player " + player.getPlayerName() + ", uuid = " + player.getPlayerUid());
-        try (PreparedStatement s = db.prepareStatement("INSERT INTO `player` " +
+        try (PreparedStatement s = db.prepareStatement("INSERT OR IGNORE INTO `player` " +
                 "(`uuid`, `name`)" +
                 "VALUES(?, ?)"))
         {

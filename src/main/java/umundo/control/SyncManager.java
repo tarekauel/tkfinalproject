@@ -3,9 +3,12 @@ package umundo.control;
 import helper.Database;
 import org.apache.log4j.Logger;
 import org.umundo.core.Message;
+import umundo.model.Match;
+import umundo.model.Player;
 import umundo.model.ScoreSyncMessage;
 import umundo.model.Welcome;
 
+import javax.xml.bind.DatatypeConverter;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
@@ -65,12 +68,52 @@ public class SyncManager {
      */
     public Message handleSyncMessage(Welcome msg) {
         String uuid = msg.getUUID();
+        // Ignore our own messages
+        if (uuid.equals(Database.getMyUID())) return null;
+        // Check if this is a new peer
+        log.info("Got Welcome Message, ignoring common sense and replying");
+        return processHashes(uuid, msg.getHashes(), false);
+        /*
         if (!clientstate.containsKey(uuid)) {
+            log.info("New client: " + uuid + ", starting sync");
             clientstate.put(uuid, STATE.HASH_COMPARE);
-            return processHashes(uuid, msg.getHashes());
+            return processHashes(uuid, msg.getHashes(), false);
         } else {
+            // Not a new peer, so this is a redundant welcome message, ignore
+            log.info("Ingoring redundant welcome msg from " + uuid);
+            return null;
+        }*/
+    }
+
+    public Message handleSyncMessage(ScoreSyncMessage msg) {
+        String uuid = msg.getSenderUID();
+        log.info("Received ScoreSyncMessage from " + uuid);
+        if (!clientstate.containsKey(uuid)) {
+            log.warn("Received unexpected ScoreSyncMessage, ignoring");
+            return null; // wtf
+        } else if (clientstate.get(uuid) == STATE.SYNCED && !msg.isInSync()) {
+            log.error("We think that we are in sync, but partner disagrees - wtf?");
+            return null; // wtf
+        } else if (clientstate.get(uuid) == STATE.SYNCED && msg.isInSync()) {
+            log.info("Synchronization with peer " + uuid + " completed");
             return null;
         }
+        // Merge into DB
+        log.info("Inserting received matches into DB");
+        Map<String, String> syncedMatches = msg.getMatches();
+        Map<String, String> syncedPlayers = msg.getPlayers();
+        if (syncedPlayers == null) log.warn("Syncedplayers == null!");
+        for (String matchUUID : syncedMatches.keySet()) {
+            String winnerUUID = syncedMatches.get(matchUUID);
+            if (winnerUUID == null) log.warn("WinnerUUID == null!");
+            if (syncedPlayers.get(winnerUUID) == null) log.warn("Winner name == null!");
+            log.info("Inserting " + matchUUID + ":" + winnerUUID + ":" + syncedPlayers.get(winnerUUID));
+            Database.insertMatch(new Match(matchUUID, new Player(syncedPlayers.get(winnerUUID), winnerUUID)));
+        }
+        // Reload hashes
+        loadDatabaseCache();
+        // Compare with received hashes and send reply
+        return processHashes(uuid, msg.getHashes(), msg.isInSync());
     }
 
     /**
@@ -117,11 +160,13 @@ public class SyncManager {
                 // Reset state of hash
                 md.reset();
                 // New Stringbuilder
-                prefix = new StringBuilder(uuid);
+                prefix = new StringBuilder();
+                prefix.append(uuid);
                 // Check if current prefix is next or if prefix was skipped
                 String nextPrefix = uuid.substring(0,1);
                 // Create new List in prefixMap
                 prefixMap.put(nextPrefix, new ArrayList<>());
+                prefixMap.get(nextPrefix).add(uuid);
                 int nextIndex = Integer.parseInt(nextPrefix, 16);
                 // Fill up skipped prefixes with hash of empty string, if applicable
                 if (nextIndex - currentIndex > 1) {
@@ -146,9 +191,10 @@ public class SyncManager {
         // Check if we are missing prefixes and fill them up
         if (!currentPrefix.equals("f")) {
             currentIndex = Integer.parseInt(currentPrefix, 16);
-            for (int i = currentIndex; i < 16; i++) {
+            for (int i = currentIndex+1; i < 16; i++) {
                 hashes[i] = md.digest();
                 md.reset();
+                prefixMap.put(Integer.toHexString(i), new ArrayList<>());
             }
         }
         // Compute overall hash
@@ -165,7 +211,7 @@ public class SyncManager {
      * @param hashes byte[][] of the hashes
      * @return A ScoreSyncMessage with reconciliation information, or null if none is required or an error is encountered
      */
-    private Message processHashes(String uuid, byte[][] hashes) {
+    private Message processHashes(String uuid, byte[][] hashes, boolean otherInSync) {
         if (hashes.length != 17) {
             log.error("Malformed hash list received");
             return null;
@@ -174,13 +220,19 @@ public class SyncManager {
             // Last hash = overall hash
             // If it matches, we are in sync
             clientstate.put(uuid, STATE.SYNCED);
-            log.info("We are in sync with peer " + uuid);
+            log.info("We ARE in sync with peer " + uuid);
+            if (!otherInSync) {
+                return new ScoreSyncMessage(getHashes(), true).get();
+            } else {
+                return null;
+            }
         } else {
             clientstate.put(uuid, STATE.RECONCILIATION);
             log.info("We are NOT in sync with peer " + uuid + ", starting reconciliation process");
             // find out which prefixes do not match
             List<String> doesNotMatch = new ArrayList<>();
             for (int i = 0; i < 16; i++) {
+                log.info(Integer.toHexString(i) + ":" + DatatypeConverter.printHexBinary(hashes[i]) + ":" + DatatypeConverter.printHexBinary(this.hashes[i]));
                 if (!Arrays.equals(hashes[i], this.hashes[i])) {
                     doesNotMatch.add(Integer.toHexString(i));
                 }
@@ -192,11 +244,12 @@ public class SyncManager {
                     String winner = this.matches.get(matchuuid);
                     matches.put(matchuuid, winner);
                     players.put(winner, this.players.get(winner));
+                    log.info(matchuuid + ":" + winner + ":" + this.players.get(winner));
                 }
             }
-            return new ScoreSyncMessage(matches, players, getHashes(), Database.getMyUID()).get();
+            log.info("Sending ScoreSyncMessage with PlayerInfo");
+            return new ScoreSyncMessage(matches, players, getHashes()).get();
         }
-        return null;
     }
 
     /**

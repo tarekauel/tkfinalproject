@@ -2,7 +2,6 @@ package umundo.model;
 
 
 import helper.Database;
-import javafx.beans.binding.StringBinding;
 import org.umundo.core.Message;
 
 import javax.xml.bind.DatatypeConverter;
@@ -48,6 +47,17 @@ public class ScoreSyncMessage {
     }
 
     /**
+     * Constructor for a message that contains hashes and inSync-flag
+     */
+    public ScoreSyncMessage(byte[][] hashes, boolean inSync) {
+        this.matches = new HashMap<>();
+        this.players = new HashMap<>();
+        this.hashes = hashes;
+        this.senderUID = Database.getMyUID();
+        this.inSync = inSync;
+    }
+
+    /**
      * Private constructor for instantiation of received messages
      */
     private ScoreSyncMessage(Map<String, String> matches, Map<String, String> players, byte[][] hashes, String senderUID, boolean inSync) {
@@ -61,16 +71,13 @@ public class ScoreSyncMessage {
     public Message get() {
         Message m = new Message();
         m.putMeta("inSync", Boolean.toString(inSync));
-
-        if(inSync) {
-            return m;
-        }
-
         m.putMeta("type", "sync");
         m.putMeta("sender", senderUID);
+        m.putMeta("inSync", Boolean.toString(inSync));
+
 
         // build matches string
-        if (matches == null || matches.isEmpty()) {
+        if (matches == null) {
             return null; // wtf
         }
 
@@ -81,10 +88,14 @@ public class ScoreSyncMessage {
             sb.append(matches.get(match));
             sb.append(';');
         }
-        m.putMeta("matches", sb.toString().substring(0, sb.length() - 2));
+        if (!sb.toString().equals("")) {
+            m.putMeta("matches", sb.toString().substring(0, sb.length() - 1));
+        } else {
+            m.putMeta("matches", "");
+        }
 
         // build players string
-        if (players == null || players.isEmpty()) {
+        if (players == null) {
             return null; // wtf
         }
 
@@ -95,7 +106,11 @@ public class ScoreSyncMessage {
             sb.append(players.get(playerUID));
             sb.append(';');
         }
-        m.putMeta("players", sb.toString().substring(0, sb.length() - 2));
+        if (!sb.toString().equals("")) {
+            m.putMeta("players", sb.toString().substring(0, sb.length() - 1));
+        } else {
+            m.putMeta("players", "");
+        }
 
         // build hashes string
         if (hashes == null) {
@@ -107,7 +122,7 @@ public class ScoreSyncMessage {
             sb.append(DatatypeConverter.printHexBinary(hashes[i]));
             sb.append(",");
         }
-        m.putMeta("hashes", sb.toString().substring(0, sb.length() - 2));
+        m.putMeta("hashes", sb.toString().substring(0, sb.length() - 1));
 
 
         return m;
@@ -117,32 +132,32 @@ public class ScoreSyncMessage {
 
         boolean inSync = Boolean.parseBoolean(m.getMeta("inSync"));
 
-        if(inSync) {
-            return new ScoreSyncMessage(null, null, null, m.getMeta("sender"), true);
-        }
-
         // parse matches
-        Map<String, String> matches = new HashMap<String, String>();
+        Map<String, String> matches = new HashMap<>();
         String[] matchStrings = m.getMeta("matches").split(";");
 
-        for (String s : matchStrings) {
-            String[] data = s.split(",");
-            matches.put(data[0], data[1]);
+        if (matchStrings.length >= 1 && !matchStrings[0].equals("")) {
+            for (String s : matchStrings) {
+                String[] data = s.split(",");
+                matches.put(data[0], data[1]);
+            }
         }
 
         // parse players
-        Map<String, String> players = new HashMap<String, String>();
-        String[] playerStrings = m.getMeta("matches").split(";");
+        Map<String, String> players = new HashMap<>();
+        String[] playerStrings = m.getMeta("players").split(";");
 
-        for (String s : playerStrings) {
-            String[] data = s.split(",");
-            players.put(data[0], data[1]);
+        if (playerStrings.length >= 1 && !playerStrings[0].equals("")) {
+            for (String s : playerStrings) {
+                String[] data = s.split(",");
+                players.put(data[0], data[1]);
+            }
         }
 
         // parse hashes
         String hashesString = m.getMeta("hashes");
         if (hashesString == null) {
-            return new ScoreSyncMessage(matches, players, null, m.getMeta("sender"), false);
+            return new ScoreSyncMessage(matches, players, null, m.getMeta("sender"), inSync);
         }
 
         String[] hashesStringArray = m.getMeta("hashes").split(",");
@@ -151,7 +166,7 @@ public class ScoreSyncMessage {
             hashes[i] = DatatypeConverter.parseHexBinary(hashesStringArray[i]);
         }
 
-        return new ScoreSyncMessage(matches, players, hashes, m.getMeta("sender"), false);
+        return new ScoreSyncMessage(matches, players, hashes, m.getMeta("sender"), inSync);
     }
 
     public Map<String, String> getMatches() {
@@ -168,6 +183,10 @@ public class ScoreSyncMessage {
 
     public boolean isInSync() {
         return inSync;
+    }
+
+    public String getSenderUID() {
+        return senderUID;
     }
 
 

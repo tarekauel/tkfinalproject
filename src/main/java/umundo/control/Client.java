@@ -378,10 +378,14 @@ public class Client {
     this.receivedScoreboard(new Scoreboard(this.scoreboard, this.uuidmap));
 
     // Process sync information in welcome message
+    log.info("Processing Welcome sync information");
     Message welcomeReply = SyncManager.getInstance().handleSyncMessage(w);
-    if (welcomeReply != null) {
-      publisher.send(welcomeReply);
-    }
+    if (welcomeReply != null) publisher.send(welcomeReply);
+  }
+
+  private void receivedScoreSync(ScoreSyncMessage msg) {
+    Message reply = SyncManager.getInstance().handleSyncMessage(msg);
+    if (reply != null) publisher.send(reply);
   }
 
   private static class Receiver implements ITypedReceiver {
@@ -403,6 +407,7 @@ public class Client {
         case "heartbeat": client.receivedHeartbeat(Heartbeat.fromMessage(message)); break;
         case "priority": client.receivedPriority(Priority.fromMessage(message)); break;
         case "welcome": client.receivedWelcome(Welcome.fromMessage(message)); break;
+        case "sync": client.receivedScoreSync(ScoreSyncMessage.fromMessage(message)); break;
         default: log.error("Received unknown message type");
       }
     }
