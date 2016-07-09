@@ -17,7 +17,7 @@ public class SyncManager {
         SYNCED
     }
 
-    private static Logger log = Logger.getLogger(Client.class.getName());
+    private static Logger log = Logger.getLogger(SyncManager.class.getName());
 
     // SMASH THE STATE!
     private HashMap<String, STATE> clientstate;
@@ -32,6 +32,8 @@ public class SyncManager {
 
     private SyncManager(){
         clientstate = new HashMap<>();
+        players = new HashMap<>();
+        prefixMap = new HashMap<>();
         loadDatabaseCache();
     }
 
@@ -75,6 +77,7 @@ public class SyncManager {
         }
         prefixMap.put(currentPrefix, new ArrayList<>());
         // Iterate over all known match UUIDs
+        log.info("Computing hashes...");
         for (String uuid : uuidset) {
             if (uuid.startsWith(currentPrefix)) {
                 prefix.append(uuid);

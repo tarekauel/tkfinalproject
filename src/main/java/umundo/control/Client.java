@@ -62,7 +62,7 @@ public class Client {
   private umundo.model.InMessage.Pos latestPos = null;
 
   public Client(int port) {
-    log.info(String.format("Starting new client on port %d and %d\n",
+    log.info(String.format("Starting new client on port %d and %d",
         port, port + 1));
     this.startUiServer(port);
   }
