@@ -3,12 +3,24 @@ package umundo.control;
 import helper.Database;
 import org.apache.log4j.Logger;
 import org.umundo.core.Message;
+import umundo.model.ScoreSyncMessage;
 import umundo.model.Welcome;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
+/**
+ * The SyncManager is responsible for synchronizing the Scoreboard of all connected peers.
+ * This is made more efficient through the use of hashes to determine which part of the database is
+ * not identical.
+ * The system computes a hash over a sorted list of all match UUIDs in our local scoreboard history. It also
+ * computes hashes over 16 partitions of the database, based on the first character of the match UUID (0...9a...f).
+ * These 17 hashes are exchanged with the peers, and allow the peers to determine if the database is in sync and, if not,
+ * which prefixes need to be exchanged. Using this method, the sync overhead can be reduced, as we no longer need to
+ * transmit the entire database all the time.
+ * The process is repeated in the other direction to ensure that the databases are reconciled in the end.
+ */
 public class SyncManager {
     private enum STATE {
         HASH_COMPARE,
@@ -16,21 +28,27 @@ public class SyncManager {
         SYNCED
     }
 
-    private static Logger log = Logger.getLogger(Client.class.getName());
+    private static Logger log = Logger.getLogger(SyncManager.class.getName());
 
-    // SMASH THE STATE!
+    // Keep track of the state of individual peers
     private HashMap<String, STATE> clientstate;
 
     // Make space for 17 hashes
     private byte[][] hashes = new byte[17][];
+
+    // Cache for database information
     private HashMap<String, String> matches;
     private HashMap<String, String> players;
     private HashMap<String, List<String>> prefixMap;
 
+    // Singleton instance
     private static SyncManager instance;
 
-    private SyncManager(){
+    private SyncManager() {
+        // private constructor (singleton)
         clientstate = new HashMap<>();
+        players = new HashMap<>();
+        prefixMap = new HashMap<>();
         loadDatabaseCache();
     }
 
@@ -39,17 +57,25 @@ public class SyncManager {
         return instance;
     }
 
+    /**
+     * Handles a sync message of the type "Welcome Message", processing the contained hashes and generating a reply,
+     * if necessary.
+     * @param msg The Welcome Message
+     * @return A reply Message, or null if none is needed
+     */
     public Message handleSyncMessage(Welcome msg) {
         String uuid = msg.getUUID();
         if (!clientstate.containsKey(uuid)) {
             clientstate.put(uuid, STATE.HASH_COMPARE);
             return processHashes(uuid, msg.getHashes());
-            // TODO Get and send hashes
         } else {
             return null;
         }
     }
 
+    /**
+     * Load the contents of the database into the cache and compute all required hashes
+     */
     private void loadDatabaseCache() {
         matches = Database.getMatchDatabase();
         players = Database.getPlayerDatabase();
@@ -75,6 +101,7 @@ public class SyncManager {
         }
         prefixMap.put(currentPrefix, new ArrayList<>());
         // Iterate over all known match UUIDs
+        log.info("Computing hashes...");
         for (String uuid : uuidset) {
             if (uuid.startsWith(currentPrefix)) {
                 prefix.append(uuid);
@@ -131,8 +158,18 @@ public class SyncManager {
         log.info("Computed all hashes");
     }
 
-
+    /**
+     * Given a list of hashes, compare these with our own hashes and generate a ScoreSyncMessage with the information
+     * required for reconciliation.
+     * @param uuid UUID of the peer we are synchronizing with
+     * @param hashes byte[][] of the hashes
+     * @return A ScoreSyncMessage with reconciliation information, or null if none is required or an error is encountered
+     */
     private Message processHashes(String uuid, byte[][] hashes) {
+        if (hashes.length != 17) {
+            log.error("Malformed hash list received");
+            return null;
+        }
         if (Arrays.equals(hashes[16], this.hashes[16])) {
             // Last hash = overall hash
             // If it matches, we are in sync
@@ -142,19 +179,30 @@ public class SyncManager {
             clientstate.put(uuid, STATE.RECONCILIATION);
             log.info("We are NOT in sync with peer " + uuid + ", starting reconciliation process");
             // find out which prefixes do not match
-            List<Integer> doesNotMatch = new ArrayList<>();
+            List<String> doesNotMatch = new ArrayList<>();
             for (int i = 0; i < 16; i++) {
                 if (!Arrays.equals(hashes[i], this.hashes[i])) {
-                    doesNotMatch.add(i);
+                    doesNotMatch.add(Integer.toHexString(i));
                 }
             }
-            // TODO Create new message with mismatched prefixes and players
-            // TODO Send the message to the peer
-
+            HashMap<String, String> matches = new HashMap<>();
+            HashMap<String, String> players = new HashMap<>();
+            for (String prefix : doesNotMatch) {
+                for (String matchuuid : prefixMap.get(prefix)) {
+                    String winner = this.matches.get(matchuuid);
+                    matches.put(matchuuid, winner);
+                    players.put(winner, this.players.get(winner));
+                }
+            }
+            return new ScoreSyncMessage(matches, players, getHashes(), Database.getMyUID()).get();
         }
         return null;
     }
 
+    /**
+     * Getter for the list of hashes
+     * @return A byte[][] containing the list of our local hashes
+     */
     public byte[][] getHashes() {
         return hashes;
     }

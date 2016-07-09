@@ -62,7 +62,7 @@ public class Client {
   private umundo.model.InMessage.Pos latestPos = null;
 
   public Client(int port) {
-    log.info(String.format("Starting new client on port %d and %d\n",
+    log.info(String.format("Starting new client on port %d and %d",
         port, port + 1));
     this.startUiServer(port);
   }
@@ -377,7 +377,11 @@ public class Client {
     this.uuidmap.put(w.getUsername(), w.getUUID());
     this.receivedScoreboard(new Scoreboard(this.scoreboard, this.uuidmap));
 
-    SyncManager.getInstance().handleSyncMessage(w);
+    // Process sync information in welcome message
+    Message welcomeReply = SyncManager.getInstance().handleSyncMessage(w);
+    if (welcomeReply != null) {
+      publisher.send(welcomeReply);
+    }
   }
 
   private static class Receiver implements ITypedReceiver {

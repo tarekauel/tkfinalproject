@@ -27,7 +27,7 @@ public class WSServer extends WebSocketServer {
   public WSServer(Client client, int port) throws UnknownHostException {
     super(new InetSocketAddress(port));
     this.client = client;
-    log.info(String.format("Server created on port %d\n", port));
+    log.info(String.format("Server created on port %d", port));
   }
 
   public void sendMessage(OutMessage m) {
