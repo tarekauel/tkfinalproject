@@ -377,7 +377,11 @@ public class Client {
     this.uuidmap.put(w.getUsername(), w.getUUID());
     this.receivedScoreboard(new Scoreboard(this.scoreboard, this.uuidmap));
 
-    SyncManager.getInstance().handleSyncMessage(w);
+    // Process sync information in welcome message
+    Message welcomeReply = SyncManager.getInstance().handleSyncMessage(w);
+    if (welcomeReply != null) {
+      publisher.send(welcomeReply);
+    }
   }
 
   private static class Receiver implements ITypedReceiver {
