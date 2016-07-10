@@ -335,7 +335,7 @@ public class Client {
         }
       } else {
         // question is outdated
-        log.info(String.format("Answer by %s was too late", a.getUsername()));
+        log.info(String.format("Answer by %s was too late. our qid: %s, their qid: %s", a.getUsername(), currentQuestionId, a.getQuestionId()));
       }
     }
   }
