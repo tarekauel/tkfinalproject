@@ -1,0 +1,25 @@
+<nav class="navbar navbar-default">
+    <div class="container">
+        <!-- Display collapse button on mobile devices -->
+        <div class="navbar-header">
+            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navigation-collapse" aria-expanded="false">
+                <span class="sr-only">Toggle navigation</span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+                <span class="icon-bar"></span>
+            </button>
+            <a class="navbar-brand" href="#">DistQuiz</a>
+        </div>
+
+        <!-- Collect the nav links, forms, and other content for toggling -->
+        <div class="navbar-collapse collapse" id="navigation-collapse">
+            <ul class="nav navbar-nav">
+                <li ng-class="{ active: isActive('/game') }"><a href="#!/game">Quiz</a></li>
+                <li ng-class="{ active: isActive('/questions') }"><a href="#!/questions">Questions</a></li>
+                <li ng-class="{ active: isActive('/scores') }"><a href="#!/scores">Scoreboard</a></li>
+            </ul>
+
+            <button ng-show="isAuthenticated()" type="button" class="btn btn-danger navbar-btn navbar-right">Logout</button>
+        </div>
+    </div>
+</nav>

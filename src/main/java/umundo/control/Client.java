@@ -1,5 +1,6 @@
 package umundo.control;
 
+import helper.Database;
 import org.apache.log4j.Logger;
 import umundo.QuestionFactory;
 import umundo.SimpleWebServer;
@@ -21,6 +22,7 @@ import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.UUID;
 
 public class Client {
 
@@ -41,10 +43,12 @@ public class Client {
   // websocket server to communicate with the web ui
   private WSServer wsServer;
 
-  private int currentQuestionId = 0;
+  private String currentQuestionId = "";
   private ArrayList<Question> questionHistory = new ArrayList<>();
   // map of scores: (username, score)
   private HashMap<String, Integer> scoreboard = new HashMap<>();
+  // map of uuid: (username, uuid)
+  private HashMap<String, String> uuidmap = new HashMap<>();
   private HashSet<String> receivedAnswer;
 
   private String username;
@@ -58,7 +62,7 @@ public class Client {
   private umundo.model.InMessage.Pos latestPos = null;
 
   public Client(int port) {
-    log.info(String.format("Starting new client on port %d and %d\n",
+    log.info(String.format("Starting new client on port %d and %d",
         port, port + 1));
     this.startUiServer(port);
   }
@@ -181,7 +185,7 @@ public class Client {
           self.electionGoesOn = false;
           log.info("election finished and am I the leader: " + self.leader);
           self.heartbeatSender();
-          if (currentQuestionId == 0) {
+          if (currentQuestionId.isEmpty()) {
             // trigger first question immediately
             workerThread.interrupt();
           }
@@ -228,7 +232,9 @@ public class Client {
         if (this.leader) {
           // if leader: send question
           // publish a new question if client is the leader
-          Question q = QuestionFactory.getQuestionLoc(++currentQuestionId, this.getLatestPos());
+          Question q = QuestionFactory.getQuestionForLocation(this.getLatestPos());
+          q.setMatchUUID(UUID.randomUUID().toString());
+          currentQuestionId = q.getQuestionId();
           questionHistory.add(q);
           publisher.send(q.get());
           receivedAnswer = new HashSet<>();
@@ -252,6 +258,7 @@ public class Client {
   public void setUser(Userinfo user) {
     this.username = user.getUsername();
     this.scoreboard.put(username, 0);
+    this.uuidmap.put(username, Database.getMyUID());
     wsServer.setLoggedIn(true);
     this.startUmundo();
   }
@@ -267,7 +274,7 @@ public class Client {
 
   public void pullScoreboard() {
     // ui pulls the latest scoreboard if someone connects to the server
-    wsServer.sendMessage(new Scoreboard(this.scoreboard));
+    wsServer.sendMessage(new Scoreboard(this.scoreboard, this.uuidmap));
   }
 
   public void answerFromUser(Answer answer) {
@@ -282,7 +289,8 @@ public class Client {
   }
 
   private void sendWelcome() {
-    Welcome w = new Welcome(this.getUsername());
+    log.info("Sending welcome message");
+    Welcome w = new Welcome(this.getUsername(), Database.getMyUID(), SyncManager.getInstance().getHashes());
     this.receivedWelcome(w);
     publisher.send(w.get());
   }
@@ -297,27 +305,37 @@ public class Client {
 
   private void receivedAnswer(Answer a) {
     if (this.leader) {
-      log.info(String.format("Received answer by %s for %d\n", a.getUsername(), a.getQuestionId()));
-      if (a.getQuestionId() == currentQuestionId && !receivedAnswer.contains(a.getUsername())) {
-        // is latest question and user has not answered, yet
+      log.info(String.format("Received answer by %s for %s", a.getUsername(), a.getQuestionId()));
+
+      if (a.getQuestionId().equals(currentQuestionId) && !receivedAnswer.contains(a.getUsername())) {
+        // is latest question and user has not answered yet
         receivedAnswer.add(a.getUsername());
         Question q = questionHistory.get(questionHistory.size() - 1);
         if (a.getAnswer() == q.getCorrectAnswer()) {
-          log.info(String.format("Answer by %s for %d was correct\n", a.getUsername(), a.getQuestionId()));
+          if (!q.isAnsweredCorrectly()) {
+            log.info(String.format("Answer by %s for %s was correct", a.getUsername(), a.getQuestionId()));
+            // Remember that it was answered correctly
+            q.setAnsweredCorrectly();
 
-          //update scores
-          int lastScore = scoreboard.getOrDefault(a.getUsername(), 0);
-          scoreboard.put(a.getUsername(), lastScore + 1);
+            //update scores
+            int lastScore = scoreboard.getOrDefault(a.getUsername(), 0);
+            scoreboard.put(a.getUsername(), lastScore + 1);
 
-          Scoreboard sb = new Scoreboard(scoreboard);
-          publisher.send(sb.get());
-          receivedScoreboard(sb);
+            // Add to database
+            Database.insertMatch(new Match(q.getMatchUUID(), new Player(a.getUsername(), uuidmap.get(a.getUsername()))));
+
+            Scoreboard sb = new Scoreboard(scoreboard, uuidmap);
+            publisher.send(sb.get());
+            receivedScoreboard(sb);
+          } else {
+            log.info(String.format("Answer by %s for %s was correct, but question was already answered", a.getUsername(), a.getQuestionId()));
+          }
         } else {
-          log.info(String.format("Answer by %s for %d was wrong\n", a.getUsername(), a.getQuestionId()));
+          log.info(String.format("Answer by %s for %s was wrong", a.getUsername(), a.getQuestionId()));
         }
       } else {
         // question is outdated
-        log.info(String.format("Answer by %s was too late\n", a.getUsername()));
+        log.info(String.format("Answer by %s was too late. our qid: %s, their qid: %s", a.getUsername(), currentQuestionId, a.getQuestionId()));
       }
     }
   }
@@ -333,6 +351,22 @@ public class Client {
   }
 
   private void receivedScoreboard(Scoreboard scoreboard) {
+    HashMap<String, Integer> newScore = scoreboard.getScores();
+    HashMap<String, String> newUUIDs = scoreboard.getUUIDmap();
+    for (String user : newScore.keySet()) {
+      int oldscore = this.scoreboard.getOrDefault(user, -1);
+      // If no old score is known, ignore this user
+      if (oldscore == -1) continue;
+      // If score has increased, write to database as winner
+      if (oldscore < newScore.get(user)) {
+        Database.insertMatch(new Match(
+                questionHistory.get(questionHistory.size() - 1).getMatchUUID(),
+                new Player(user, newUUIDs.get(user))
+        ));
+        break;
+      }
+    }
+
     this.scoreboard = scoreboard.getScores();
     log.info("Received latest scoreboard");
     wsServer.sendMessage(scoreboard);
@@ -340,7 +374,18 @@ public class Client {
 
   private void receivedWelcome(Welcome w) {
     this.scoreboard.put(w.getUsername(), this.scoreboard.getOrDefault(w.getUsername(), 0));
-    this.receivedScoreboard(new Scoreboard(this.scoreboard));
+    this.uuidmap.put(w.getUsername(), w.getUUID());
+    this.receivedScoreboard(new Scoreboard(this.scoreboard, this.uuidmap));
+
+    // Process sync information in welcome message
+    log.info("Processing Welcome sync information");
+    Message welcomeReply = SyncManager.getInstance().handleSyncMessage(w);
+    if (welcomeReply != null) publisher.send(welcomeReply);
+  }
+
+  private void receivedScoreSync(ScoreSyncMessage msg) {
+    Message reply = SyncManager.getInstance().handleSyncMessage(msg);
+    if (reply != null) publisher.send(reply);
   }
 
   private static class Receiver implements ITypedReceiver {
@@ -362,6 +407,7 @@ public class Client {
         case "heartbeat": client.receivedHeartbeat(Heartbeat.fromMessage(message)); break;
         case "priority": client.receivedPriority(Priority.fromMessage(message)); break;
         case "welcome": client.receivedWelcome(Welcome.fromMessage(message)); break;
+        case "sync": client.receivedScoreSync(ScoreSyncMessage.fromMessage(message)); break;
         default: log.error("Received unknown message type");
       }
     }
@@ -370,12 +416,15 @@ public class Client {
   private class Greeter implements ITypedGreeter {
     @Override
     public void welcome(TypedPublisher typedPublisher, SubscriberStub subscriberStub) {
+      log.info("=> " + typedPublisher.toString());
+      log.info("=> " + subscriberStub.toString());
       self.sendWelcome();
     }
 
     @Override
     public void farewell(TypedPublisher typedPublisher, SubscriberStub subscriberStub) {
-      // ignored, because users may rejoin
+      log.info("<= " + typedPublisher.toString());
+      log.info("<= " + subscriberStub.toString());
     }
   }
 }

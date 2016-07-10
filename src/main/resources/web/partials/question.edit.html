@@ -1,0 +1,96 @@
+<div class="container-fluid">
+    <div class="row">
+        <div class="xs-col-12">
+            <form class="form-horizontal">
+                <div class="form-group">
+                    <label for="questionId" class="col-sm-2 control-label">Question ID</label>
+                    <div class="col-sm-10">
+                        <input type="text" class="form-control" id="questionId" ng-model="question.questionId" readonly>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="question" class="col-sm-2 control-label">Question</label>
+                    <div class="col-sm-10">
+                        <input type="text" class="form-control" id="question" ng-model="question.question">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="answerA" class="col-sm-2 control-label">Answer A</label>
+                    <div class="col-sm-10">
+                        <input type="text" class="form-control" id="answerA" ng-model="question.answerA">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="answerB" class="col-sm-2 control-label">Answer B</label>
+                    <div class="col-sm-10">
+                        <input type="text" class="form-control" id="answerB" ng-model="question.answerB">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="answerC" class="col-sm-2 control-label">Answer C</label>
+                    <div class="col-sm-10">
+                        <input type="text" class="form-control" id="answerC" ng-model="question.answerC">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="answerD" class="col-sm-2 control-label">Answer D</label>
+                    <div class="col-sm-10">
+                        <input type="text" class="form-control" id="answerD" ng-model="question.answerD">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="correctAnswer" class="col-sm-2 control-label">Correct Answer</label>
+                    <div class="col-sm-10">
+                        <select id="correctAnswer" class="form-control" ng-model="question.correctAnswer" convert-to-number>
+                            <option value="0" ng-selected="0 == question.correctAnswer">A</option>
+                            <option value="1" ng-selected="1 == question.correctAnswer">B</option>
+                            <option value="2" ng-selected="2 == question.correctAnswer">C</option>
+                            <option value="3" ng-selected="3 == question.correctAnswer">D</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="col-sm-offset-2 col-sm-10">
+                        <div class="checkbox">
+                            <label>
+                                <input ng-model="linkToLocation" type="checkbox"> Save question with coordinates below
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="latitude" class="col-sm-2 control-label">Coordinates</label>
+
+                    <div class="col-sm-5">
+                        <div class="input-group">
+                            <span class="input-group-btn">
+                                <button class="btn btn-default" type="button" ng-click="updateCoordinates()">
+                                    <span class="glyphicon glyphicon-refresh"></span>
+                                </button>
+                            </span>
+                            <input type="text" class="form-control" id="latitude" ng-model="pos.latitude">
+                        </div>
+                    </div>
+
+                    <div class="col-sm-5">
+                        <input type="text" class="form-control" id="longitude" ng-model="pos.longitude">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <div class="col-sm-offset-2 col-sm-10">
+                        <button ng-click="save()" type="submit" class="btn btn-default">Save</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

@@ -5,20 +5,20 @@ import org.umundo.core.Message;
 public class Answer extends InMessage {
 
   private String username;
+  private String questionId;
   private int answer;
-  private int questionId;
 
-  public Answer(String username, int answer, int questionId) {
+  public Answer(String username, String questionId, int answer) {
     this.username = username;
-    this.answer = answer;
     this.questionId = questionId;
+    this.answer = answer;
   }
 
   public static Answer fromMessage(Message m) {
     return new Answer(
         m.getMeta("username"),
-        Integer.parseInt(m.getMeta("answer")),
-        Integer.parseInt(m.getMeta("questionId"))
+        m.getMeta("questionId"),
+        Integer.parseInt(m.getMeta("answer"))
     );
   }
 
@@ -26,8 +26,8 @@ public class Answer extends InMessage {
     Message m = new Message();
     m.putMeta("type", "answer");
     m.putMeta("username", username);
+    m.putMeta("questionId", questionId);
     m.putMeta("answer", answer + "");
-    m.putMeta("questionId", questionId + "");
     return m;
   }
 
@@ -35,11 +35,11 @@ public class Answer extends InMessage {
     return username;
   }
 
-  public int getAnswer() {
-    return answer;
+  public String getQuestionId() {
+    return questionId;
   }
 
-  public int getQuestionId() {
-    return questionId;
+  public int getAnswer() {
+    return answer;
   }
 }

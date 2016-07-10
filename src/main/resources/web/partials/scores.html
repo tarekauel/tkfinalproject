@@ -1,0 +1,28 @@
+<div class="container-fluid">
+    <div class="row" style="margin-top: 2em;">
+        <div class="col-xs-12">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                    <tr>
+                        <!--th>UUID</th-->
+                        <th>User</th>
+                        <th>Score</th>
+                    </tr>
+                    </thead>
+
+                    <tbody>
+                    <tr ng-if="scores.length == 0">
+                        <td colspan="2">Loading...</td>
+                    </tr>
+                    <tr ng-repeat="score in scores | orderBy:'-score' ">
+                        <!--td><samp>{{ question.questionId }}</samp></td-->
+                        <td>{{ score.user }}</td>
+                        <td>{{ score.score }}</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
